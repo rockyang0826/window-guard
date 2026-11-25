@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>窗口守門人</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Noto+Sans+TC:wght@400;700&display=swap" rel="stylesheet">
+<style>
+/* VOICE: 雨夜門診的 lo-fi 點陣小遊戲，氣氛放鬆，但規則一板一眼
+   IDEA: 晚間美沙冬給藥窗口：玻璃窗外是排隊的多種族病人與雨中的城市夜景，桌上是證件、服藥卡、系統畫面
+   PICTURE: 160×192 原生解析度的類人角色半身像（精靈、獸耳、獸人、魔族、人魚、吸血鬼、蜥蜴人、矮人），表情隨耐心變化
+   COLOUR and TYPE: 冒險食堂（番茄紅、麵包色、灰青、暖白、深咖啡）＋夜間深咖啡；DotGothic16 標題與數字，Noto Sans TC 內文
+   LAYOUT: 寬螢幕上下兩層（窗口／桌面＋動作列）；窄螢幕依序堆疊，動作列固定在底部 */
+:root{color-scheme:light;--red:#C8553D;--red2:#A9432F;--bread:#F2D0A4;--teal:#588B8B;--teal2:#456F6F;--paper:#FFFDF8;--ink:#2D2A26;--mut:#6B5E55;--gold:#E0A458;--line:#2D2A26}
+*{box-sizing:border-box;min-width:0}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}body{position:relative;min-height:100vh;margin:0;background:var(--bread);color:var(--ink);font:16px/1.6 'Noto Sans TC',system-ui,sans-serif;overflow-x:clip}
+.px{font-family:'DotGothic16','Noto Sans TC',monospace;letter-spacing:.02em}
+button{font:inherit;cursor:pointer;touch-action:manipulation;-webkit-appearance:none;appearance:none;border-radius:0;min-height:44px;border:3px solid var(--line);background:var(--paper);color:var(--ink);padding:6px 14px;box-shadow:3px 3px 0 var(--line);transition:transform .06s}
+button:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--line)}
+button:focus-visible{outline:3px solid var(--teal);outline-offset:3px}
+button:disabled{opacity:.45;cursor:not-allowed}
+.wrap{max-width:1240px;margin:0 auto;padding:12px max(2vw,10px) 40px}
+header{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;justify-content:space-between;padding:6px 2px 10px}
+header h1{margin:0;font-size:clamp(22px,3vw,32px);line-height:1.05;color:var(--red2)}
+.hud{display:flex;flex-wrap:wrap;gap:8px}
+.chip{background:var(--paper);border:3px solid var(--line);padding:2px 10px;font-size:15px;white-space:nowrap}
+.chip b{color:var(--red2)}
+.chip.click{cursor:pointer}
+.booth{position:relative;border:4px solid var(--line);background:#3B2F2A;box-shadow:5px 5px 0 var(--line)}
+#scene{display:block;width:100%;aspect-ratio:640/280;image-rendering:pixelated;image-rendering:crisp-edges}
+.bubble{position:absolute;left:61%;top:7%;right:2.5%;background:var(--paper);border:3px solid var(--line);padding:8px 12px;font-size:clamp(14px,1.6vw,17px);box-shadow:3px 3px 0 var(--line);min-height:3.2em}
+.bubble::before{content:"";position:absolute;left:-14px;top:22px;border:7px solid transparent;border-right-color:var(--line)}
+.bubble.mad{background:#FCE3DC;border-color:var(--red2)}
+.bubble .who{display:block;font-size:13px;color:var(--teal2)}
+.pat{position:absolute;left:2%;top:6%;width:min(30%,240px);background:rgba(45,42,38,.82);border:3px solid var(--paper);padding:5px 8px;color:var(--paper);font-size:13px}
+.pat .bar{height:10px;background:#5A4B43;border:2px solid var(--paper);margin-top:3px}
+.pat .bar i{display:block;height:100%;width:100%;background:var(--teal);transition:width .2s linear}
+.pat.l1 .bar i{background:var(--gold)}.pat.l2 .bar i,.pat.l3 .bar i{background:var(--red)}
+.desk{display:grid;grid-template-columns:minmax(0,1fr) 290px;gap:14px;margin-top:14px}
+.docs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;background:#B9774F;border:4px solid var(--line);padding:12px;box-shadow:5px 5px 0 var(--line)}
+.doc{background:var(--paper);border:3px solid var(--line);padding:10px 12px;position:relative}
+.doc h3{margin:0 0 6px;font-size:15px;display:flex;justify-content:space-between;gap:6px;border-bottom:3px dashed var(--bread);padding-bottom:4px}
+.doc h3 span{font-size:12px;color:var(--mut)}
+.doc.idc{background:#FFF6E8}
+.doc.card{background:#F9E7E2}
+.doc.sys{background:#22302F;color:#E9F3EF;border-color:#111}
+.doc.sys h3{border-bottom-color:#456F6F}
+.doc.sys h3 span{color:#9FC7C0}
+.row{display:flex;gap:8px;align-items:baseline;justify-content:space-between;padding:2px 4px;margin:0 -4px;border:2px solid transparent}
+.row .k{font-size:13px;color:var(--mut);white-space:nowrap}
+.doc.sys .row .k{color:#9FC7C0}
+.row .v{font-weight:700;text-align:right;white-space:nowrap}
+.photo{display:block;width:80px;height:96px;image-rendering:pixelated;border:3px solid var(--line);background:#DCE9E6;margin:2px 0 6px}
+.idtop{display:flex;gap:10px;align-items:flex-start}
+.idtop .rows{flex:1}
+.f.insp{cursor:crosshair;border-style:dashed;border-color:var(--teal)}
+.f.sel{background:rgba(224,164,88,.35);border-color:var(--gold)}
+.f.bad{background:rgba(200,85,61,.25);border-color:var(--red)}
+.f.ok{background:rgba(88,139,139,.22);border-color:var(--teal)}
+.warnv{color:var(--red)}
+.doc.sys .warnv{color:#FF9F8A}
+.tools{display:flex;flex-direction:column;gap:10px}
+.tools .pair{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.tools button.on{background:var(--teal);color:var(--paper)}
+.acts{display:grid;gap:8px}
+.acts button{font-size:17px;text-align:left;display:flex;justify-content:space-between;align-items:center}
+.acts .give{background:var(--teal);color:var(--paper)}
+.acts .hold{background:var(--gold)}
+.acts .deny{background:var(--red);color:var(--paper)}
+.acts kbd{font-family:'DotGothic16',monospace;font-size:13px;opacity:.8}
+.log{background:var(--paper);border:3px solid var(--line);padding:8px 10px;font-size:14px;max-height:190px;overflow:auto}
+.log p{margin:2px 0}
+.log .g{color:var(--teal2)}.log .r{color:var(--red2)}.log .t{color:var(--mut)}
+.hint{font-size:13px;color:var(--mut);margin:0}
+.ov{position:absolute;top:0;left:0;right:0;bottom:0;min-height:100%;background:rgba(45,42,38,.62);display:none;align-items:flex-start;justify-content:center;padding:24px 12px;z-index:20}
+.ov.show{display:flex}
+.panel{background:var(--paper);border:4px solid var(--line);box-shadow:6px 6px 0 var(--line);max-width:760px;width:100%;padding:20px 22px}
+.panel h2{margin:0 0 8px;font-size:clamp(24px,3.4vw,34px);line-height:1.1;color:var(--red2)}
+.panel h3{margin:14px 0 6px;font-size:18px}
+.panel ol,.panel ul{padding-left:1.3em;margin:6px 0}
+.panel li{margin:4px 0}
+.new{background:var(--gold);font-size:12px;padding:0 6px;margin-left:6px;border:2px solid var(--line)}
+.btns{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
+.slip{border:3px dashed var(--red);background:#FCEDE8;padding:8px 12px;margin:8px 0}
+.slip.cp{border-color:var(--gold);background:#FBF0DD}
+.slip b{color:var(--red2)}
+.big{font-size:clamp(40px,7vw,64px);line-height:1;color:var(--teal2)}
+.titlepic{display:block;width:100%;image-rendering:pixelated;border:3px solid var(--line);background:#3B2F2A;margin:6px 0 10px}
+.toast{background:var(--ink);color:var(--paper);padding:6px 12px;border:3px solid var(--line);font-size:15px;display:none}
+.err{display:none;background:#FCE3DC;border:3px solid var(--red2);padding:8px 12px;font-size:13px;margin-top:10px}
+.toast.show{display:block}
+.choice{display:block;width:100%;text-align:left;margin:8px 0}
+.foot{font-size:13px;color:var(--mut);margin-top:14px}
+@media(prefers-reduced-motion:reduce){button,.pat .bar i{transition:none}}
+.f{cursor:pointer}
+.f:hover{border-color:var(--teal);border-style:dashed}
+#scene{cursor:pointer}
+.coach{display:none;margin-top:12px;background:var(--teal);color:var(--paper);border:3px solid var(--line);padding:8px 12px;font-size:16px;box-shadow:3px 3px 0 var(--line)}
+.coach.show{display:block}
+.coach b{color:#F2D0A4}
+.pulse{animation:pulse 1s steps(2) infinite;outline:3px solid var(--gold);outline-offset:2px}
+@keyframes pulse{50%{outline-color:transparent}}
+.dwrap{position:relative}
+.stamp{position:absolute;left:50%;top:42%;transform:translate(-50%,-50%) rotate(-12deg);border:6px solid;padding:4px 24px;font-size:clamp(34px,6vw,64px);font-family:'DotGothic16','Noto Sans TC',monospace;opacity:0;pointer-events:none;background:rgba(255,253,248,.6);white-space:nowrap;z-index:3}
+.stamp.give{color:#3F6E6E;border-color:#3F6E6E}.stamp.hold{color:#9A6A1F;border-color:#9A6A1F}.stamp.deny{color:var(--red2);border-color:var(--red2)}
+.stamp.on{animation:stampIn .12s steps(3) forwards}
+@keyframes stampIn{0%{opacity:0;transform:translate(-50%,-50%) rotate(-12deg) scale(2.3)}100%{opacity:.95;transform:translate(-50%,-50%) rotate(-12deg) scale(1)}}
+.hit .booth,.hit .dwrap{animation:shake .26s linear}
+@keyframes shake{0%{transform:none}20%{transform:translate(0,6px)}40%{transform:translate(0,-4px)}60%{transform:translate(0,3px)}80%{transform:translate(0,-1px)}100%{transform:none}}
+.notes{display:grid;gap:6px}
+.note{background:#F7E3BF;border:2px solid var(--line);padding:5px 10px;font-size:14px;line-height:1.5}
+.note b{color:var(--red2)}
+.note .new{margin-left:0;margin-right:6px}
+.mini{display:none}
+.skip{position:absolute;right:2%;bottom:5%;background:rgba(45,42,38,.8);color:var(--paper);border:2px solid var(--paper);padding:2px 10px;font-size:13px;display:none}
+.skip.show{display:block}
+button.chip{min-height:32px;box-shadow:none;padding:2px 10px;font-size:15px}
+.goalok{color:var(--teal2)!important}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:10px 0}
+.stats span{background:#FFFDF8;border:2px solid var(--line);padding:6px 8px;display:flex;flex-direction:column;gap:2px;font-size:14px;color:#6B5E55;white-space:nowrap}
+.stats b{font-family:'DotGothic16',monospace;font-size:22px;color:var(--ink);line-height:1.2;white-space:normal}
+@media (max-width:560px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.rev{list-style:none;padding:0;margin:8px 0}.rev li{display:flex;gap:6px;align-items:baseline;flex-wrap:wrap;padding:6px 36px 6px 10px;border-bottom:2px dotted #D8C7AE;position:relative;opacity:0;animation:revIn .3s forwards;animation-delay:var(--d)}
+.rev .mk{position:absolute;right:8px;top:4px;font-family:'DotGothic16',monospace;font-size:20px}.rev li.o .mk{color:var(--teal)}.rev li.x .mk{color:var(--red)}.rev li.x{background:#FCEDE8}
+.after{opacity:0;animation:revIn .4s forwards;animation-delay:var(--d)}
+@keyframes revIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.rev li,.after{animation:none;opacity:1}}
+canvas.rp{display:block;width:100%;max-width:520px;margin-top:6px;border:3px solid var(--line);image-rendering:pixelated}
+.code{background:#FFFDF8;border:3px solid var(--line);padding:8px 12px;margin:10px 0}.code pre{white-space:pre-wrap;word-break:break-all;font-family:'Noto Sans TC',sans-serif;font-size:14px;margin:6px 0;background:#F2D0A4;padding:6px 8px;user-select:all}
+.meaning{background:#EAF2EF;border:3px solid var(--teal);padding:8px 12px;margin:8px 0}
+.meaning li{margin:3px 0}
+.tabs{display:none;gap:4px}
+.tabs button{flex:1;min-height:38px;padding:2px 4px;font-size:14px;box-shadow:none;border-width:2px;background:#E9BF8F}
+.tabs button.on{background:var(--paper);border-bottom-color:var(--paper)}
+.tabs button.ok{color:var(--teal2)}.tabs button.bad{color:var(--red2)}
+#bLog{display:none}
+#acts.sw{grid-template-columns:1fr}#acts .stop{background:#C8553D!important;color:#FFFDF8!important;}#acts.sw .stop{justify-content:center;font-size:20px;min-height:56px;letter-spacing:.1em}
+#acts.why{grid-template-columns:repeat(2,minmax(0,1fr))}#acts.why button{justify-content:center;min-height:44px;font-size:14px}
+#acts.why .ghost{grid-column:1/-1;background:var(--paper);color:var(--ink)}
+@media (max-width:900px),(max-height:520px){
+.wrap{padding:6px 6px 12px}
+header{padding:0 0 6px;gap:4px}
+header h1{display:none}
+.hud{gap:4px}
+.chip{font-size:11px;padding:0 4px;border-width:2px}
+.hud{flex-wrap:nowrap}header{flex-wrap:nowrap}
+button.chip{min-height:26px}
+#hGoal{display:none}
+.booth{box-shadow:3px 3px 0 var(--line);border-width:3px}
+.bubble{position:static;margin:0;border-width:0;border-top:3px solid var(--line);box-shadow:none;padding:5px 10px;font-size:14px;min-height:0}
+.bubble::before{display:none}
+.bubble .who{font-size:12px;display:inline;margin-right:6px}
+.pat{font-size:11px;width:40%;padding:3px 6px;border-width:2px;top:5%}
+.pat .bar{height:7px}
+.skip{font-size:11px}
+.coach{font-size:14px;padding:6px 10px;margin-top:6px}
+.desk{display:flex;flex-direction:column;gap:8px;margin-top:8px;position:relative}
+.tabs{display:flex;margin-bottom:-3px;position:relative;z-index:1}
+.docs{display:block;padding:6px;box-shadow:3px 3px 0 var(--line);border-width:3px}
+.docs .doc{display:none;padding:6px 10px}
+.docs .doc.act{display:block}
+.doc h3{font-size:14px;margin-bottom:2px}
+.row{padding:1px 4px}.row .k{font-size:12px}.row .v{font-size:15px}
+.photo{width:64px;height:77px}
+.stamp{font-size:44px}
+.tools{gap:6px}
+#notes,.tools .hint,#log,#mini{display:none}
+.acts{grid-template-columns:repeat(3,minmax(0,1fr));order:1}
+.acts button{justify-content:center;font-size:16px;padding:4px;min-height:46px}
+.acts kbd,.mh{display:none}
+.tools .pair{order:2}
+.tools .pair button{min-height:40px;padding:4px;font-size:14px}
+.tools .pair .px{display:none}
+#bLog{display:block}
+body.swmode .tools .pair{display:none}
+body.swmode #docs,body.swmode #tabs{display:none}
+#acts.sw{grid-template-columns:1fr!important}#acts.why{grid-template-columns:1fr 1fr!important}#acts.sw .stop{min-height:48px;font-size:18px}#acts.sw kbd,#acts.why kbd{display:none}#acts.why button{min-height:38px;font-size:13px}
+.toast{position:absolute;left:8px;right:8px;top:48px;z-index:6;font-size:14px;pointer-events:none;opacity:.94}
+#hClock,.foot{display:none}
+.tools .pair{grid-template-columns:repeat(4,minmax(0,1fr))}
+.foot{font-size:11px;margin-top:8px}
+.err{font-size:12px}
+}
+@media (orientation:landscape) and (max-height:520px){
+.wrap{display:grid;grid-template-columns:minmax(0,46%) minmax(0,1fr);gap:0 10px;align-items:start}
+header,.err,.foot{grid-column:1/-1}
+.booth{grid-column:1;grid-row:2}.coach{grid-column:1;grid-row:3}
+.desk{grid-column:2;grid-row:2/span 2;margin-top:0}
+}
+@media(prefers-reduced-motion:reduce){.stamp.on{animation:none;opacity:.95}.hit .booth,.hit .dwrap{animation:none}.pulse{animation:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1 class="px">窗口守門人</h1>
+  <div class="hud px">
+    <span class="chip">第 <b id="hDay">1</b> 晚</span>
+    <span class="chip f" id="hDate" data-k="date" title="可和有效期限、最後服藥比對">今日 <b id="hDateV">115/12/01</b></span>
+    <span class="chip" id="hClock">17:00</span>
+    <span class="chip">病人 <b id="hQ">1/6</b></span>
+    <span class="chip">分數 <b id="hScore">0</b></span>
+    <span class="chip">客訴 <b id="hCp">0</b></span>
+    <span class="chip" id="hGoal">目標</span>
+  </div>
+</header>
+
+<section class="booth" aria-label="給藥窗口">
+  <canvas id="scene" width="640" height="280"></canvas>
+  <div class="pat px" id="pat"><span id="patT">耐心：平靜</span><div class="bar"><i id="patB"></i></div></div>
+  <div class="bubble" id="bubble" aria-live="polite"><span class="who" id="who"></span><span id="say"></span></div>
+  <div class="skip px" id="skip">點畫面跳過</div>
+</section>
+<div class="coach" id="coach" aria-live="polite"></div>
+
+<section class="desk">
+  <div class="dwrap"><div class="tabs px" id="tabs"><button data-t="0">證件</button><button data-t="1">服藥卡</button><button data-t="2">系統</button></div><div class="docs" id="docs"></div><div class="stamp px" id="stamp" aria-hidden="true"></div></div>
+  <div class="tools">
+    <div class="notes" id="notes"></div>
+    <div class="pair">
+      <button id="bRule">手冊<span class="px"> [R]</span></button>
+      <button id="bAsk">詢問病人</button>
+      <button id="bLog">紀錄</button>
+      <button id="bSnd" aria-pressed="true">音效：開</button>
+    </div>
+    <div class="mini" id="mini"><canvas id="miniC" class="f" data-k="face" width="80" height="96" title="本人"></canvas><div class="mt"><span id="miniT"></span><div class="bar"><i id="miniB"></i></div></div></div>
+    <div class="toast px" id="toast" aria-live="polite"></div>
+    <div class="acts" id="acts"></div>
+    <p class="hint">點任兩個欄位就能比對：同名欄位、照片配本人、效期或最後服藥配「今日」。詢問會花時間：多數人會被安撫，但急性子越問越煩。</p>
+    <div class="log" id="log" aria-live="polite"><p>比對紀錄與對話會出現在這裡。</p></div>
+  </div>
+</section>
+<p class="err" id="err"></p>
+<p class="foot">角色、姓名、證件與病歷皆為虛構。規則中的天數與流程為教學示例，實際依本院作業規範。</p>
+</div>
+
+<div class="ov" id="ov"><div class="panel" id="panel"></div></div>
+
+<script>
+/* 啟動診斷：只用舊式語法，舊手機也能執行。主程式沒跑起來時，畫面會顯示原因與裝置資訊。 */
+(function(){
+  function box(msg){
+    var e=document.getElementById('bootDiag');
+    if(!e){e=document.createElement('div');e.id='bootDiag';e.setAttribute('style','position:absolute;left:8px;right:8px;top:8px;z-index:9999;background:#FFFDF8;color:#2D2A26;border:3px solid #C8553D;padding:10px;font:14px/1.6 sans-serif;word-break:break-all');(document.body||document.documentElement).appendChild(e)}
+    e.innerHTML='<b>遊戲沒有正常啟動，請截圖這個畫面回報。</b><br>'+msg+'<br><small>'+navigator.userAgent+'</small>';
+  }
+  window.__bootErr=[];
+  window.onerror=function(m,src,line,col){window.__bootErr.push(m+' @'+line+':'+col);if(!window.__booted)box('錯誤：'+m+'（第 '+line+' 行）');};
+  setTimeout(function(){if(!window.__booted)box(window.__bootErr.length?('錯誤：'+window.__bootErr.join('；')):'主程式沒有執行（可能是瀏覽器版本不支援，或頁面被外層擋下）。');},6000);
+})();
+</script>
+<script>
+{
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const OL='#2D2A26';
+const shade=(h,f)=>{const n=parseInt(h.slice(1),16);let r=n>>16,g=n>>8&255,b=n&255;const t=f<0?0:255,p=Math.abs(f);r=Math.round((t-r)*p+r);g=Math.round((t-g)*p+g);b=Math.round((t-b)*p+b);return '#'+((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1)};
+/* ---------- 角色（160×192 原生像素） ---------- */
+const SKIN={h1:'#F6D8C2',h2:'#E8B894',h3:'#C98E66',h4:'#9A6446',orc:'#8FAE6B',demon:'#D99A8A',mer:'#9CC7C9',vamp:'#EFE7E4',liz:'#7FA37A'};
+const CACHE=new Map();
+function charCanvas(sp,mood){
+  const key=JSON.stringify(sp)+mood;if(CACHE.has(key))return CACHE.get(key);
+  const c=document.createElement('canvas');c.width=160;c.height=192;const g=c.getContext('2d');
+  g.save();g.scale(2,2);paint(g,sp,mood);g.restore();pixelize(c,g);CACHE.set(key,c);return c;
+}
+function pixelize(c,g){
+  const W=c.width,H=c.height,im=g.getImageData(0,0,W,H),d=im.data,a=new Uint8Array(W*H);
+  for(let i=0;i<W*H;i++){if(d[i*4+3]<110){d[i*4+3]=0}else{d[i*4+3]=255;a[i]=1}}
+  for(let y=0;y<H;y++)for(let x=0;x<W;x++){const i=y*W+x;if(a[i])continue;
+    if((x>0&&a[i-1])||(x<W-1&&a[i+1])||(y>0&&a[i-W])||(y<H-1&&a[i+W])){d[i*4]=45;d[i*4+1]=42;d[i*4+2]=38;d[i*4+3]=255}}
+  g.putImageData(im,0,0);
+}
+function paint(g,sp,mood){
+  const S=SKIN[sp.skin],S2=shade(S,-.14),S3=shade(S,.18),H=sp.hc,H2=shade(H,-.25),HL=shade(H,.35),C=sp.cloth,C2=shade(C,-.22),EY=sp.eye;
+  const E=(x,y,rx,ry,c)=>{g.fillStyle=c;g.beginPath();g.ellipse(x,y,rx,ry,0,0,Math.PI*2);g.fill()};
+  const P=(pts,c)=>{g.fillStyle=c;g.beginPath();g.moveTo(pts[0][0],pts[0][1]);for(let i=1;i<pts.length;i++)g.lineTo(pts[i][0],pts[i][1]);g.closePath();g.fill()};
+  const L=(pts,c,w)=>{g.strokeStyle=c;g.lineWidth=w;g.lineCap='round';g.lineJoin='round';g.beginPath();g.moveTo(pts[0][0],pts[0][1]);for(let i=1;i<pts.length;i++)g.lineTo(pts[i][0],pts[i][1]);g.stroke()};
+  const Q=(x0,y0,cx,cy,x1,y1,c,w)=>{g.strokeStyle=c;g.lineWidth=w;g.lineCap='round';g.beginPath();g.moveTo(x0,y0);g.quadraticCurveTo(cx,cy,x1,y1);g.stroke()};
+  const mir=pts=>pts.map(([x,y])=>[80-x,y]);
+  const face=()=>{g.beginPath();g.moveTo(21.5,38);g.bezierCurveTo(21,18,59,18,58.5,38);g.bezierCurveTo(58,50,48,60,40,60);g.bezierCurveTo(32,60,22,50,21.5,38);g.closePath()};
+  const st=sp.hair, r=sp.race;
+  /* 背景層：後髮、頭冠、角 */
+  if(r==='liz'){const fr=[[24,40],[8,22],[13,38],[4,46],[13,52],[24,50]];P(fr,sp.acc2||'#C8553D');P(mir(fr),sp.acc2||'#C8553D');L([[10,27],[22,42]],shade(sp.acc2||'#C8553D',-.3),1);L(mir([[10,27],[22,42]]),shade(sp.acc2||'#C8553D',-.3),1)}
+  if(st==='long'){g.fillStyle=H2;g.beginPath();g.moveTo(19,30);g.bezierCurveTo(18,14,62,14,61,30);g.lineTo(64,80);g.quadraticCurveTo(40,88,16,80);g.closePath();g.fill()}
+  else if(st==='bob'){E(40,40,22,23,H2)}
+  else if(st&&st!=='mohawk'){E(40,34,20,18.5,H2)}
+  if(st==='bun'||st==='oldbun'){E(40,14,8,7,H);E(38,12,3,2,HL)}
+  if(st==='pony'){E(62,46,6,15,H);E(61,40,2,6,HL);E(58,33,3,2.5,sp.acc2||'#C8553D')}
+  /* 身體 */
+  g.fillStyle=C;g.beginPath();g.moveTo(4,96);g.lineTo(8,78);g.quadraticCurveTo(12,67,30,64);g.lineTo(50,64);g.quadraticCurveTo(68,67,72,78);g.lineTo(76,96);g.closePath();g.fill();
+  g.save();g.clip();g.fillStyle=C2;g.fillRect(54,58,30,40);g.fillStyle=shade(C,.12);g.fillRect(4,58,10,40);g.restore();
+  P([[33,64],[40,75],[47,64]],S2);P([[30,64],[40,77],[34,63]],shade(C,.15));P(mir([[30,64],[40,77],[34,63]]),C2);
+  g.fillStyle=S;g.fillRect(34.5,54,11,12);g.fillStyle=S2;g.fillRect(40,54,5.5,12);g.fillRect(34.5,55,11,4);
+  /* 耳朵 */
+  if(r==='elf'){const e=[[24,40],[8,29],[24,49]];P(e,S);P(mir(e),S);P([[23,41],[12,32],[23,46]],S2);P(mir([[23,41],[12,32],[23,46]]),S2)}
+  else if(r==='orc'||r==='vamp'||r==='demon'){const e=[[23,39],[14,34],[23,49]];P(e,S);P(mir(e),S)}
+  else if(r==='mer'){const e=[[23,37],[11,32],[14,40],[10,47],[23,50]];P(e,'#6FA9AD');P(mir(e),'#6FA9AD');L([[13,35],[21,42]],'#4F8A8E',.8);L(mir([[13,35],[21,42]]),'#4F8A8E',.8)}
+  else if(r==='human'||r==='dwarf'){E(22,44,3,5,S);E(58,44,3,5,S);E(22,44,1.3,2.5,S2);E(58,44,1.3,2.5,S2)}
+  if(sp.ear){E(21.5,50,1.4,1.4,'#E0A458');E(58.5,50,1.4,1.4,'#E0A458')}
+  /* 臉 */
+  face();g.fillStyle=S;g.fill();
+  g.save();face();g.clip();
+  E(62,42,9,26,S2);E(40,22,22,6,S2);E(30,49,6,3,S3);
+  if(r==='liz'){for(const [x,y] of [[26,44],[28,40],[25,48],[54,44],[52,40],[55,48],[36,26],[44,26],[40,23]])E(x,y,1.3,1,S2)}
+  if(mood==='furious')E(40,40,22,22,'rgba(200,60,40,.22)');
+  g.restore();
+  if(mood==='puff'){E(23.5,50,4,5,S);E(56.5,50,4,5,S);E(57,51,2.5,3.5,S2)}
+  /* 眼睛 */
+  const slit=r==='cat'||r==='liz'||r==='wolf';
+  for(const cx of [32,48]){
+    const sd=cx<40?-1:1;
+    if(mood==='happy'){Q(cx-4.5,45,cx,40,cx+4.5,45,OL,1.6);continue}
+    E(cx,44,5,3.7,'#FFFDF8');E(cx,44.4,3.1,3.7,EY);E(cx,43,3.1,2,shade(EY,-.35));
+    if(slit){g.fillStyle='#1E1A17';g.fillRect(cx-.6,41.3,1.2,6)}else E(cx,44.6,1.4,1.7,'#1E1A17');
+    E(cx-1.1,42.6,1.1,1.1,'#FFFFFF');E(cx+1.3,46.2,.6,.6,'#FFFFFF');
+    let lid=null;
+    if(mood==='sleepy'||mood==='drunk')lid=[[cx-6,39],[cx+6,39],[cx+6,44.6],[cx-6,44.6]];
+    else if(mood==='impatient')lid=[[cx-6,39],[cx+6,39],[cx+6,42.4],[cx-6,42.4]];
+    else if(mood==='angry'||mood==='furious'){const inY=mood==='furious'?44:43,outY=40.5;lid=sd<0?[[cx-6,38],[cx+6,38],[cx+6,inY],[cx-6,outY]]:[[cx-6,38],[cx+6,38],[cx+6,outY],[cx-6,inY]]}
+    if(lid){P(lid,S);L([lid[3],lid[2]],OL,1.5)}
+    else{g.strokeStyle=OL;g.lineWidth=1.5;g.lineCap='round';g.beginPath();g.moveTo(cx-5.6,43.2);g.quadraticCurveTo(cx,38.6,cx+5.6,42.6);g.lineTo(cx+sd*7.2,41.2);g.stroke()}
+    L([[cx-3,47.9],[cx+3,47.9]],S2,.8);
+  }
+  /* 鼻、嘴 */
+  L([[41,50],[41.6,51.6]],S2,1);
+  const MO='#8C3A2E';
+  if(mood==='happy'){g.fillStyle=MO;g.beginPath();g.moveTo(36.5,53.5);g.quadraticCurveTo(40,59,43.5,53.5);g.closePath();g.fill();E(40,56.2,1.8,1,'#E8857A')}
+  else if(mood==='impatient')L([[37,54.5],[43,54.5]],MO,1.1);
+  else if(mood==='angry'){Q(36.5,56,40,52.6,43.5,56,MO,1.3)}
+  else if(mood==='furious'){E(40,55.5,5,4.2,'#5A2219');g.fillStyle='#FFFDF8';g.fillRect(36.5,51.8,7,1.4);E(40,57.6,2.6,1.4,'#E8857A')}
+  else if(mood==='sleepy'||mood==='drunk'){E(40.5,55,1.6,1.3,MO)}
+  else if(mood==='puff')L([[38,54.5],[42,54.5]],OL,1);
+  else if(mood==='nervous')L([[36.5,55],[38.5,54],[40.5,55],[42.5,54]],MO,1);
+  else Q(37,54,40,55.8,43,54,MO,1.1);
+  if(r==='orc'){P([[35,55.5],[35.8,51],[37.2,55.5]],'#F5F0E0');P([[42.8,55.5],[44.2,51],[45,55.5]],'#F5F0E0')}
+  if(r==='vamp'&&mood!=='puff'){P([[38,54.4],[38.7,56.6],[39.4,54.4]],'#FFFFFF');P([[40.6,54.4],[41.3,56.6],[42,54.4]],'#FFFFFF')}
+  /* 鬍子（矮人） */
+  if(sp.beard){g.fillStyle=H;g.beginPath();g.moveTo(23,46);g.bezierCurveTo(24,62,30,76,40,77);g.bezierCurveTo(50,76,56,62,57,46);g.bezierCurveTo(52,56,46,58,40,58);g.bezierCurveTo(34,58,28,56,23,46);g.fill();
+    g.fillStyle=H;g.beginPath();g.ellipse(36,53,5,2.2,.25,0,Math.PI*2);g.ellipse(44,53,5,2.2,-.25,0,Math.PI*2);g.fill();L([[40,62],[40,72]],H2,.8);L([[34,62],[36,71]],H2,.8);L([[46,62],[44,71]],H2,.8)}
+  /* 腮紅 */
+  const bl=(mood==='drunk'||mood==='angry'||mood==='furious')?'rgba(214,92,74,.75)':'rgba(232,133,122,.5)';
+  E(29,49.5,3.2,1.4,bl);E(51,49.5,3.2,1.4,bl);
+  if(mood==='drunk'||mood==='angry'){for(const bx of [27,30,49,52])L([[bx,48.6],[bx-1,50.4]],'#B8473A',.6)}
+  /* 前髮 */
+  if(st&&st!=='mohawk'){
+    g.fillStyle=H;g.beginPath();
+    if(st==='pony'){g.moveTo(20,38);g.bezierCurveTo(19,16,61,16,60,36);g.lineTo(56,30);g.lineTo(46,24);g.lineTo(38,30);g.lineTo(30,27);g.lineTo(24,36)}
+    else{g.moveTo(20,37);g.bezierCurveTo(19,15,61,15,60,37);g.lineTo(57,34);g.lineTo(54,27);g.lineTo(50,33);g.lineTo(45,26);g.lineTo(40,32);g.lineTo(35,26);g.lineTo(30,32);g.lineTo(26,27);g.lineTo(23,35)}
+    g.closePath();g.fill();
+    if(st==='long'||st==='bob'){const k=st==='long'?66:58;P([[19.5,30],[25,32],[23,k],[18,k-2]],H);P(mir([[19.5,30],[25,32],[23,k],[18,k-2]]),H);L([[21,36],[21,k-6]],H2,.7);L(mir([[21,36],[21,k-6]]),H2,.7)}
+    if(st==='spiky'){for(const [x,y,w] of [[24,22,5],[31,17,6],[39,14,6],[47,16,6],[54,21,5]])P([[x-w/2,y+8],[x,y-4],[x+w/2,y+8]],H)}
+    if(st==='short'||st==='spiky'){P([[19.5,32],[23.5,32],[22.5,42],[19.5,41]],H);P(mir([[19.5,32],[23.5,32],[22.5,42],[19.5,41]]),H)}
+    if(st==='oldbun'){L([[28,22],[34,19]],'#FFFDF8',1);L([[46,19],[52,22]],'#FFFDF8',1)}
+    Q(28,23,38,18,50,21,HL,1.6);Q(31,25,38,22,45,23,'rgba(255,255,255,.18)',1);
+  }
+  if(st==='mohawk'){P([[35,10],[45,10],[47,30],[33,30]],H);for(const y of [10,15,20])P([[35,y+4],[40,y-3],[45,y+4]],H);L([[38,12],[38,28]],HL,1);for(const [x,y] of [[27,26],[30,23],[50,23],[53,26],[25,30],[55,30]])E(x,y,1,.8,H2)}
+  /* 頭頂：獸耳、角、冠 */
+  if(r==='cat'){const e=[[23,26],[21,6],[36,18]];P(e,H);P(mir(e),H);P([[25,23],[23.5,11],[32,18.5]],'#F2B8A8');P(mir([[25,23],[23.5,11],[32,18.5]]),'#F2B8A8')}
+  if(r==='wolf'){const e=[[22,28],[18,2],[37,18]];P(e,H);P(mir(e),H);P([[24,24],[20.5,8],[33,18.5]],shade(H,.45));P(mir([[24,24],[20.5,8],[33,18.5]]),shade(H,.45))}
+  if(r==='demon'){for(const m of [1,-1]){const tx=x=>m>0?x:80-x;g.fillStyle='#E8DCC6';g.beginPath();g.moveTo(tx(29),22);g.quadraticCurveTo(tx(17),15,tx(21),2);g.lineTo(tx(24.5),4);g.quadraticCurveTo(tx(23),14,tx(34),19);g.closePath();g.fill();L([[tx(22.3),8],[tx(25.5),8.6]],'#B9A98E',.9);L([[tx(23),13],[tx(27),12.6]],'#B9A98E',.9)}}
+  if(r==='liz'){for(const x of [34,40,46])P([[x-3,22],[x,13],[x+3,22]],sp.acc2||'#C8553D')}
+  /* 配件 */
+  if(sp.glasses){g.strokeStyle=OL;g.lineWidth=1.1;for(const cx of [32,48]){g.beginPath();g.arc(cx,44,6.3,0,Math.PI*2);g.stroke()}L([[38.3,43.6],[41.7,43.6]],OL,1.1);E(30,41.5,1.6,1,'rgba(255,255,255,.6)');E(46,41.5,1.6,1,'rgba(255,255,255,.6)')}
+  if(sp.mask&&mood!=='puff'){g.fillStyle='#F3EEE6';g.beginPath();g.moveTo(25,47);g.lineTo(55,47);g.quadraticCurveTo(54,59,40,61);g.quadraticCurveTo(26,59,25,47);g.fill();L([[30,51],[50,51]],'#D7CFC3',.8);L([[31,55],[49,55]],'#D7CFC3',.8);L([[25,48],[21,45]],'#D7CFC3',.8);L([[55,48],[59,45]],'#D7CFC3',.8)}
+  /* 眉毛 */
+  const BR=st&&st!=='mohawk'?H2:shade(S,-.45),bw=mood==='furious'?2.2:1.6;
+  const brow={calm:[[27,35.5],[30.5,34.2],[36,35]],impatient:[[27,35.5],[36,35.5]],angry:[[27,33.5],[36,37]],furious:[[26.5,32.5],[36.5,37.6]],sleepy:[[27,36.5],[36,35]],drunk:[[27,36.5],[36,35]],nervous:[[27,35.8],[31,34],[36,34.6]],happy:[[27,35],[31,33.6],[36,34.6]],puff:[[27,35],[36,34.2]]}[mood]||[[27,35.5],[30.5,34.2],[36,35]];
+  L(brow,BR,bw);L(mir(brow),BR,bw);
+  /* 情緒符號 */
+  if(mood==='nervous'||mood==='impatient'||mood==='puff'){g.fillStyle='#9FD3E6';g.beginPath();g.moveTo(59,27);g.quadraticCurveTo(62,33,59.5,34.5);g.quadraticCurveTo(57,33,59,27);g.fill()}
+  if(mood==='angry'||mood==='furious'){const vx=55,vy=24,R='#C8553D';for(const [a,b] of [[[vx-3,vy-1],[vx-1,vy-1]],[[vx+1,vy-1],[vx+3,vy-1]],[[vx-3,vy+2],[vx-1,vy+2]],[[vx+1,vy+2],[vx+3,vy+2]],[[vx-1,vy-3],[vx-1,vy-1]],[[vx+1,vy-3],[vx+1,vy-1]],[[vx-1,vy+2],[vx-1,vy+4]],[[vx+1,vy+2],[vx+1,vy+4]]])L([a,b],R,1.1)}
+}
+
+/* ---------- 日期 ---------- */
+const D=(m,d)=>({t:`115/${String(m).padStart(2,'0')}/${String(d).padStart(2,'0')}`,n:m===11?d-30:d});
+
+/* ---------- 規則 ---------- */
+const RULES=[
+ {day:1,id:'R1',t:'照片',x:'證件照片須與窗口裡的本人相符。不符 → 拒絕給藥。'},
+ {day:1,id:'R2',t:'身分',x:'證件、服藥卡、系統的姓名、個案編號、生日須一致。不符 → 拒絕給藥，請個管師協助查明。'},
+ {day:1,id:'R3',t:'處方效期',x:'服藥卡處方須在有效期限內（含當日）。過期 → 暫緩，請醫師評估後開立。'},
+ {day:1,id:'R4',t:'重複給藥',x:'系統顯示今日已服藥者，不得再給。→ 拒絕給藥。'},
+ {day:1,id:'R8',t:'觀察吞服',x:'給藥後，在窗口前看完整個服藥過程：①當面喝完藥 → ②把杯子交回給你看 → ③到飲水機加水涮杯、再喝一口 → ④開口和你說話。看到不對勁就喊停處理；都沒問題，就讓他離開。'},
+ {day:2,id:'R5',t:'酒精',x:'有酒味或酒醉表現 → 暫緩給藥，通報醫師。'},
+ {day:2,id:'R6',t:'過度鎮靜',x:'叫名字、敲窗口都叫不太醒，或呼吸聲粗嘎、像打鼾 → 暫緩給藥，立即通報醫師。只有瞳孔小，不一定是過量，要合併看叫不叫得醒、能不能清楚對答。'},
+ {day:2,id:'R7',t:'中斷服藥',x:'連續 3 天以上未服藥 → 暫緩，請醫師重新評估劑量。'},
+ 
+ {day:3,id:'R9',t:'本人服用',x:'美沙冬須本人在窗口當面服用：不得代領 → 拒絕；要求攜回 → 不同意攜回，仍可當面給藥。'},
+ {day:3,id:'R10',t:'跨區給藥',x:'服藥卡為他院個案者，系統須有「跨區給藥核准」。無核准 → 暫緩，聯絡原院所與醫師。'}
+];
+const AN={give:'給藥',hold:'暫緩・通報醫師',deny:'拒絕給藥'};
+
+/* ---------- 角色外觀 ---------- */
+const LOOK={
+ xiaoqing:{race:'elf',skin:'h1',hair:'long',hc:'#E9E1CC',eye:'#588B8B',cloth:'#588B8B',ear:1},
+ zhihao:{race:'orc',skin:'orc',hair:'short',hc:'#2F2A28',eye:'#8C3A2E',cloth:'#8C6A5D'},
+ daming:{race:'dwarf',skin:'h3',hair:'short',hc:'#B8B0A8',eye:'#3A2B2B',cloth:'#4F5D8C',beard:1},
+ yating:{race:'cat',skin:'h2',hair:'bob',hc:'#7A4A2E',eye:'#7A8F5A',cloth:'#E0A458'},
+ fake:{race:'human',skin:'h1',hair:'pony',hc:'#C8553D',eye:'#456F6F',cloth:'#C8553D',acc2:'#F2D0A4'},
+ jianguo:{race:'wolf',skin:'h3',hair:'spiky',hc:'#9A9590',eye:'#E0A458',cloth:'#7A8F5A'},
+ meiling:{race:'mer',skin:'mer',hair:'long',hc:'#3E6E7A',eye:'#2F3A4F',cloth:'#F2D0A4',ear:1},
+ jiaming:{race:'demon',skin:'demon',hair:'short',hc:'#8C2F25',eye:'#E0A458',cloth:'#2F3A4F'},
+ yizhen:{race:'vamp',skin:'vamp',hair:'long',hc:'#2B2430',eye:'#A9432F',cloth:'#5A4B6A'},
+ mingzhe:{race:'liz',skin:'liz',hair:null,hc:'#5E7F59',eye:'#E0A458',cloth:'#C8553D',acc2:'#E0A458'},
+ yawen:{race:'human',skin:'h2',hair:'bun',hc:'#3A2B2B',eye:'#3A2B2B',cloth:'#588B8B',glasses:1},
+ junhong:{race:'cat',skin:'h1',hair:'short',hc:'#2F3A4F',eye:'#4F5D8C',cloth:'#E0A458'},
+ huiru:{race:'elf',skin:'h2',hair:'pony',hc:'#E8C07A',eye:'#456F6F',cloth:'#8C6A5D',mask:1,acc2:'#588B8B'},
+ xiulan:{race:'dwarf',skin:'h2',hair:'oldbun',hc:'#B8B0A8',eye:'#3A2B2B',cloth:'#C8553D',glasses:1},
+ zonghan:{race:'wolf',skin:'h2',hair:'short',hc:'#7A4A2E',eye:'#456F6F',cloth:'#4F5D8C'},
+ yaqi:{race:'mer',skin:'mer',hair:'bob',hc:'#E8857A',eye:'#2F3A4F',cloth:'#7A8F5A',ear:1},
+ zhiwei:{race:'orc',skin:'orc',hair:'mohawk',hc:'#C8553D',eye:'#3A2B2B',cloth:'#2F3A4F'},
+ boyu:{race:'human',skin:'h1',hair:'short',hc:'#5A4636',eye:'#2D2A26',cloth:'#588B8B',glasses:1},
+ meihua:{race:'demon',skin:'demon',hair:'long',hc:'#3A2B2B',eye:'#8C3A2E',cloth:'#7A8F5A',ear:1}
+};
+
+/* ---------- 病人（全部虛構） ---------- */
+const P0=(o)=>Object.assign({mood:'normal',smell:false,puff:false,clue:null,dose:60,site:'本院',cross:'—',today:'尚未服藥',photo:null},o);
+const DAYS=[
+ {date:D(12,1),cases:[
+  P0({name:'林小晴',lk:'xiaoqing',birth:'85/04/02',no:'MMT-0215',valid:'115/12/31',last:D(11,30),dose:45,ans:'give',lines:'晚安～今天也麻煩你了！',ask:'昨天有來喝，今天精神不錯喔。',why:'三份文件一致、處方有效、今日未服藥，可以給藥。'}),
+  P0({name:'陳志豪',lk:'zhihao',birth:'78/11/23',no:'MMT-0102',valid:'116/01/15',last:D(11,30),ans:'give',lines:'嗨，跟平常一樣。',ask:'昨天下班有過來，沒什麼不舒服。',why:'資料一致、效期內、今日未服藥。'}),
+  P0({name:'王大明',lk:'daming',birth:'70/02/08',no:'MMT-0077',valid:'115/11/30',last:D(11,30),dose:80,ans:'hold',clue:'valid',rule:'R3',mood:'nervous',lines:'上次醫生說要回診……我忘了。先給我喝就好吧？',ask:'昨天有喝啊，回診的事我下禮拜去。',why:'處方 115/11/30 已過期，需醫師評估後開立新處方再給藥。'}),
+  P0({name:'張雅婷',lk:'fake',photo:'yating',birth:'79/03/14',no:'MMT-0333',valid:'115/12/20',last:D(11,30),ans:'deny',clue:'photo',rule:'R1',mood:'nervous',lines:'我是張雅婷啦，照片是以前拍的。',ask:'呃……生日喔？應該是……七月吧？',why:'證件照片與本人明顯不同（種族、髮型、髮色都不一樣），問生日也答錯，無法確認是本人。'}),
+  P0({name:'黃建國',lk:'jianguo',birth:'73/09/30',no:'MMT-0140',valid:'116/02/01',last:D(12,1),today:'17:12 已服藥',ans:'deny',clue:'today',rule:'R4',lines:'我還沒喝喔，真的。',ask:'剛剛？我……我剛剛才到啦。',why:'系統顯示今天 17:12 已服藥，不得重複給藥。'}),
+  P0({name:'吳美玲',lk:'meiling',cardName:'吳美芳',cardNo:'MMT-0418',birth:'82/06/11',no:'MMT-0391',valid:'115/12/25',last:D(11,30),ans:'deny',clue:'name',rule:'R2',lines:'欸？卡片怎麼了嗎？',ask:'啊……這張好像是我姊姊的卡？',why:'服藥卡姓名與個案編號屬於另一人，三方資料不一致，需拿回本人的卡並請個管師確認。'})
+ ]},
+ {date:D(12,2),cases:[
+  P0({name:'林小晴',lk:'xiaoqing',birth:'85/04/02',no:'MMT-0215',valid:'115/12/31',last:D(12,1),dose:45,ans:'give',lines:'又見面了！外面雨好大。',ask:'昨天有來，晚上睡得很好。',why:'一切正常，可以給藥。'}),
+  P0({name:'劉家銘',lk:'jiaming',birth:'80/01/19',no:'MMT-0250',valid:'116/01/05',last:D(12,1),ans:'hold',mood:'drunk',smell:true,clue:'look',rule:'R5',lines:'（一股酒味飄過來）朋友生日～喝一點點而已啦～',ask:'嘿嘿……剛剛又喝了一罐啤酒提神……',why:'有酒味且臉紅、說話含糊，酒精與美沙冬併用會加重呼吸抑制，應暫緩並通報醫師。'}),
+  P0({name:'蔡宜蓁',lk:'yizhen',birth:'86/08/08',no:'MMT-0288',valid:'115/12/28',last:D(12,1),dose:50,ans:'hold',mood:'sleepy',clue:'look',rule:'R6',lines:'……（低著頭，呼吸聲粗粗的，像在打鼾）',ask:'（你叫了兩次名字、敲敲窗口，她才慢慢抬頭）……嗯……下午……睡不著……吃了……朋友給的……安眠藥……',why:'叫名字叫不太醒、呼吸聲粗嘎像打鼾，是過量的危險徵象，加上自述併用安眠藥。應暫緩給藥、立即通報醫師。'}),
+  P0({name:'鄭明哲',lk:'mingzhe',birth:'75/12/01',no:'MMT-0166',valid:'116/01/20',last:D(11,28),dose:70,ans:'hold',clue:'last',rule:'R7',lines:'前幾天回南部，沒辦法來喝。',ask:'最後一次喝是上禮拜六吧，這幾天有點流鼻水。',why:'最後服藥 115/11/28，已連續 3 天未服藥，耐受性可能下降，應請醫師重新評估劑量。'}),
+  P0({name:'何柏宇',lk:'boyu',birth:'82/09/16',no:'MMT-0344',valid:'116/01/18',last:D(12,1),dose:60,ans:'give',lines:'（瞳孔看起來小小的）晚安，今天一樣。',ask:'（叫他名字，他馬上抬頭看你）有啊，昨天有來喝。今天精神還不錯，等等要去接小孩。',why:'瞳孔小是服用鴉片類藥物常見的現象，單一徵象不代表過量。他叫得醒、對答清楚、資料一致，可以給藥。'}),
+  P0({name:'許雅雯',lk:'yawen',birth:'84/05/27',no:'MMT-0302',valid:'116/01/10',last:D(11,29),dose:40,ans:'give',lines:'這兩天加班沒來，今天一定要喝。',ask:'前天跟昨天都沒來，其他都還好。',why:'連續未服藥 2 天，未達 3 天門檻，資料一致，可以給藥（仍可提醒規律服藥）。'}),
+  P0({name:'周俊宏',lk:'junhong',birth:'77/07/07',no:'MMT-0121',valid:'116/02/14',last:D(12,1),ans:'give',lines:'快點快點，我趕著去上大夜班。',ask:'昨天有喝啦，快點給我。',why:'資料一致、處方有效、今日未服藥，可以給藥；趕時間也要照流程觀察服藥。'}),
+  P0({name:'楊惠如',lk:'huiru',birth:'81/05/20',sysBirth:'81/02/05',no:'MMT-0276',valid:'115/12/30',last:D(12,1),dose:55,ans:'deny',clue:'birth',rule:'R2',lines:'這是我的證件啊，怎麼了嗎？',ask:'我生日五月二十號啊。',why:'證件生日與系統不一致，無法確認身分，先不給藥，請個管師查明資料。'})
+ ]},
+ {date:D(12,3),cases:[
+  P0({name:'陳秀蘭',lk:'xiulan',birth:'54/03/03',cardName:'李承恩',cardNo:'MMT-0233',sysName:'李承恩',no:'MMT-0233',valid:'116/01/31',last:D(12,2),ans:'deny',clue:'name',rule:'R9',lines:'我是承恩的媽媽，他今天加班走不開，我幫他拿回去喔。',ask:'他很乖的，你就讓我帶回去嘛。',why:'美沙冬須本人當面服用，家屬代領一律拒絕；可請個案本人前來或聯絡個管師。'}),
+  P0({name:'林小晴',lk:'xiaoqing',birth:'85/04/02',no:'MMT-0215',valid:'115/12/31',last:D(12,2),dose:45,ans:'give',lines:'今天可以帶回家喝嗎？明天要值早班……',ask:'昨天有來喝，只是明天真的很早。',why:'不同意攜回，但資料正確，可請她在窗口當面服用。'}),
+  P0({name:'謝宗翰',lk:'zonghan',birth:'83/10/10',no:'MMT-0505',site:'他院：示範醫院',cross:'已核准（至 115/12/10）',valid:'116/01/08',last:D(12,2),dose:65,ans:'give',lines:'我在這附近工作，原本在別家醫院喝。',ask:'昨天在這裡喝過，個管師有幫我申請。',why:'他院個案，系統有跨區給藥核准，可以給藥。'}),
+  P0({name:'曾雅琪',lk:'yaqi',birth:'87/02/22',no:'MMT-0517',site:'他院：示範醫院',cross:'無核准紀錄',valid:'116/01/12',last:D(12,2),dose:35,ans:'hold',clue:'cross',rule:'R10',lines:'我剛搬來桃園，可以在這裡喝嗎？',ask:'昨天在原本的醫院喝的，還沒問個管師。',why:'他院個案但系統沒有跨區給藥核准，應暫緩，聯絡原院所與醫師辦理。'}),
+  P0({name:'羅志偉',lk:'zhiwei',birth:'76/04/18',no:'MMT-0188',valid:'116/02/20',last:D(12,2),ans:'give',lines:'今天一樣，謝啦。',ask:'都好都好。',why:'資料一致、處方有效、今日未服藥，可以給藥。'}),
+  P0({name:'江美華',lk:'meihua',birth:'72/11/05',no:'MMT-0091',valid:'116/01/25',last:D(12,2),dose:50,ans:'hold',smell:true,clue:'look',rule:'R5',lines:'（靠近窗口時聞到酒味）沒有啦，是漱口水的味道。',ask:'晚餐……配了兩杯而已。',why:'外表看不太出來，但有明顯酒味且承認飲酒，仍應暫緩並通報醫師。'}),
+  P0({name:'王大明',lk:'daming',birth:'70/02/08',no:'MMT-0077',valid:'115/11/30',last:D(11,30),dose:80,ans:'hold',clue:'valid',rule:'R3',mood:'nervous',lines:'回診還沒排到……可以先讓我帶兩天份回去嗎？',ask:'這兩天都沒喝到，好難受……醫生那邊還沒去。',why:'處方已過期，且不得攜回；應暫緩，請醫師評估開立。'}),
+  P0({name:'張雅婷',lk:'yating',birth:'79/03/14',no:'MMT-0333',valid:'115/12/20',last:D(12,2),ans:'give',lines:'聽說前天有人拿我的證件來？嚇死我了。',ask:'我生日三月十四號。證件前幾天弄丟，昨天才找回來。',why:'這次照片與本人相符、資料一致，可以給藥。'})
+ ]}
+];
+const MAD=[
+ ['還要多久啊？','後面還有人在排欸。','我在趕時間……','嗯……好了沒？'],
+ ['你們效率也太差了吧！','每天都問一樣的東西，煩不煩！','快一點好不好！','我站到腳都痠了！'],
+ ['我要投訴你！叫你們主管出來！','你是故意刁難我嗎？！我每天都來耶！','（拍窗口）給不給藥一句話啦！','這什麼爛服務！我要打 1999！']
+];
+const LEAVE=['算了！我不喝了！（氣沖沖離開）','我明天去別家喝！（甩頭就走）','（罵了一聲，轉身離開）'];
+const PAT=[60,50,40];
+
+
+/* ---------- 個性：越問越煩的人 ---------- */
+const HASTY=['黃建國','劉家銘','周俊宏','羅志偉','陳秀蘭'];
+const PRAISE={R1:'擋下冒用身分，藥物沒有流出。',R2:'資料對不上就不給，守住身分核對。',R3:'過期處方擋下，交給醫師評估。',R4:'避免一次重複給藥。',R5:'避免一次酒精併用的呼吸抑制風險。',R6:'避免一次過度鎮靜的呼吸抑制風險。',R7:'中斷太久先評估，避免耐受性下降後過量。',R9:'拒絕代領，藥物不離開窗口。',R10:'跨區未核准先暫緩，流程不漏接。'};
+
+/* ---------- 狀態 ---------- */
+let day=0,ci=0,score=0,cp=0,sel=null,found=new Set(),phase='title',slips=[],dayStats=[],cases=[];
+let tab=0,tabSt=[0,0,0];const compact=()=>matchMedia('(max-width:900px),(max-height:520px)').matches;
+let waited=0,limit=60,level=0,dayT=0,walkT=1,lastTs=0,react=null,asked=false,freezeUntil=0,pendingNext=null,tut=-1,tutDone=false,snap=null;
+const cv=$('#scene');let cx=cv.getContext('2d'),mc=$('#miniC').getContext('2d');
+const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+let curO=null;const cur=()=>curO||cases[ci];
+const quiet=()=>day>=1;
+function scoreUI(){$('#hScore').textContent=quiet()&&phase!=='intro'?'？':score}
+function rowOf(c){const st=dayStats[day];let r=st.rows.find(x=>x.c===c);if(!r){r={c,name:c.name};st.rows.push(r)}return r}
+const clone=o=>JSON.parse(JSON.stringify(o));
+const pick1=a=>a[Math.floor(Math.random()*a.length)];
+
+/* ---------- 每晚病例：隨機順序與錯誤位置 ---------- */
+function buildDay(d){
+  const list=clone(DAYS[d].cases);
+  for(const c of list){
+    c.hasty=HASTY.includes(c.name);
+    if(c.cardName&&!c.sysName&&Math.random()<.5){c.sysName=c.cardName;c.sysNoX=c.cardNo;c.cardName=undefined;c.cardNo=undefined}
+    if(c.sysBirth&&Math.random()<.5){const t=c.birth;c.birth=c.sysBirth;c.sysBirth=t}
+    if(c.clue==='valid')c.valid=pick1(['115/11/28','115/11/29','115/11/30']);
+    if(c.clue==='last'&&c.ans==='hold'){const dd=DAYS[d].date.n;c.last=D(11,30+dd-pick1([3,4,5])-1)}
+    if(c.name==='許雅雯')c.last=pick1([D(11,29),D(11,30)]);
+  }
+  list.forEach(c=>{c.puff=false;c.anom=null;c.decoy=null});
+  {const sh=a=>{for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+   const g=sh(list.filter((c,i)=>c.ans==='give'&&!(d===0&&!tutDone&&i===0)));
+   const A=sh(d===0?['cup','cheek','own']:['cup','cheek','take','own']),D=sh(['cough','scratch','glance','yawn']);
+   const na=[1,2,2][d],nd=[0,1,2][d];
+   for(let i=0;i<na&&i<g.length;i++)g[i].anom=A[i];
+   for(let i=0;i<nd;i++){const t=g[na+i]||g[i];if(t)t.decoy=D[i]}}
+  const first=d===0&&!tutDone?list.shift():null;
+  for(let i=list.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[list[i],list[j]]=[list[j],list[i]]}
+  if(first)list.unshift(first);
+  return list;
+}
+
+/* ---------- 音效（Web Audio 合成，預設關閉） ---------- */
+const SND={on:true,ctx:null,rain:null};
+function audio(){if(!SND.ctx){const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return null;SND.ctx=new AC()}if(SND.ctx.state==='suspended')SND.ctx.resume();return SND.ctx}
+function tone(f,t,dur,type,vol,f2){const a=SND.ctx,o=a.createOscillator(),g=a.createGain();o.type=type;o.frequency.setValueAtTime(f,a.currentTime+t);if(f2)o.frequency.exponentialRampToValueAtTime(f2,a.currentTime+t+dur);g.gain.setValueAtTime(vol,a.currentTime+t);g.gain.exponentialRampToValueAtTime(.001,a.currentTime+t+dur);o.connect(g).connect(a.destination);o.start(a.currentTime+t);o.stop(a.currentTime+t+dur+.02)}
+function noise(dur,vol,freq){const a=SND.ctx,n=Math.floor(a.sampleRate*dur),b=a.createBuffer(1,n,a.sampleRate),d=b.getChannelData(0);for(let i=0;i<n;i++)d[i]=(Math.random()*2-1)*(1-i/n);const s=a.createBufferSource();s.buffer=b;const fl=a.createBiquadFilter();fl.type='lowpass';fl.frequency.value=freq;const g=a.createGain();g.gain.value=vol;s.connect(fl).connect(g).connect(a.destination);s.start()}
+const sfx={
+  tap(i){if(!SND.on||!SND.ctx)return;tone([660,520,780][i]||600,0,.08,'triangle',.12)},
+  stamp(){if(!SND.on||!SND.ctx)return;tone(160,0,.18,'sine',.9,45);noise(.09,.7,1800)},
+  good(){if(!SND.on||!SND.ctx)return;tone(880,.06,.12,'triangle',.18);tone(1320,.16,.18,'triangle',.16)},
+  bad(){if(!SND.on||!SND.ctx)return;tone(140,.05,.32,'square',.12,110)},
+  mad(l){if(!SND.on||!SND.ctx)return;tone(l>=3?120:180,0,.22,'sawtooth',.08+l*.03,l>=3?80:140)},
+  slam(){if(!SND.on||!SND.ctx)return;noise(.12,.5,600)}
+};
+function rainOn(){const a=audio();if(!a||SND.rain)return;const n=a.sampleRate*2,b=a.createBuffer(1,n,a.sampleRate),d=b.getChannelData(0);for(let i=0;i<n;i++)d[i]=Math.random()*2-1;const s=a.createBufferSource();s.buffer=b;s.loop=true;const fl=a.createBiquadFilter();fl.type='bandpass';fl.frequency.value=1400;fl.Q.value=.6;const g=a.createGain();g.gain.value=.018;s.connect(fl).connect(g).connect(a.destination);s.start();SND.rain=s}
+function rainOff(){if(SND.rain){try{SND.rain.stop()}catch(e){}SND.rain=null}}
+/* 背景音樂：咖啡廳抒情鋼琴（即時合成） */
+const MUS={timer:null,next:0,step:0,bus:null,mel:72};
+function impulse(a,sec){const n=Math.floor(a.sampleRate*sec),b=a.createBuffer(2,n,a.sampleRate);for(let ch=0;ch<2;ch++){const d=b.getChannelData(ch);for(let i=0;i<n;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/n,3)}return b}
+function musicBus(){const a=SND.ctx;if(MUS.bus)return MUS.bus;const master=a.createGain();master.gain.value=.2;const lp=a.createBiquadFilter();lp.type='lowpass';lp.frequency.value=3000;const conv=a.createConvolver();conv.buffer=impulse(a,2.6);const wet=a.createGain();wet.gain.value=.4;lp.connect(master);lp.connect(conv);conv.connect(wet);wet.connect(master);master.connect(a.destination);MUS.bus=lp;MUS.master=master;return lp}
+function piano(m,t,v,dur){const a=SND.ctx,f=440*Math.pow(2,(m-69)/12),g=a.createGain();g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(v,t+.006);g.gain.exponentialRampToValueAtTime(v*.32,t+.4);g.gain.exponentialRampToValueAtTime(.0001,t+dur);g.connect(musicBus());
+  [[1,'triangle',1],[2,'sine',.32],[3,'sine',.1],[4.01,'sine',.04]].forEach(([h,ty,amp])=>{const o=a.createOscillator(),og=a.createGain();o.type=ty;o.frequency.value=f*h;og.gain.value=amp;o.connect(og).connect(g);o.start(t);o.stop(t+dur+.05)})}
+const PROG=[[41,[57,60,64,67]],[40,[55,59,62,64]],[38,[53,57,60,64]],[43,[53,57,59,62]],[36,[52,55,59,62]],[45,[55,59,60,64]],[38,[53,57,60,65]],[43,[53,55,59,62]]];
+const PENTA=[72,74,76,79,81,84];const E8=60/66/2;
+function eighth(k,t){
+  const bar=PROG[Math.floor(k/8)%PROG.length],i=k%8,hum=()=>(Math.random()-.5)*.02;
+  if(i===0){piano(bar[0],t,.2,3.6);if(Math.random()<.35)bar[1].forEach(n=>piano(n,t+.01,.055,3))}
+  if(i===4&&Math.random()<.5)piano(bar[0]+12,t+hum(),.1,2);
+  const pat=[0,1,2,3,2,1,2,3];piano(bar[1][pat[i]],t+hum(),.075+Math.random()*.03,1.8);
+  if(i%2===0&&Math.random()<.42){const tones=bar[1].map(n=>n+12).concat(PENTA);let best=tones[0];for(const n of tones)if(Math.abs(n-MUS.mel)<Math.abs(best-MUS.mel)&&Math.random()<.7)best=n;MUS.mel=Math.max(69,Math.min(86,best+(Math.random()<.5?0:pick1([-2,2,3,-3]))));piano(MUS.mel,t+hum(),.13+Math.random()*.04,2.4)}
+}
+function musicOn(){const a=audio();if(!a||MUS.timer)return;MUS.next=a.currentTime+.15;MUS.step=0;MUS.timer=setInterval(()=>{if(!SND.ctx)return;while(MUS.next<SND.ctx.currentTime+.3){eighth(MUS.step,MUS.next);MUS.next+=E8;MUS.step++}},60)}
+function musicOff(){if(MUS.timer){clearInterval(MUS.timer);MUS.timer=null}}
+function soundStart(){if(!SND.on)return;audio();musicOn();rainOn()}
+$('#bSnd').onclick=()=>{SND.on=!SND.on;$('#bSnd').textContent='音效：'+(SND.on?'開':'關');$('#bSnd').setAttribute('aria-pressed',SND.on);if(SND.on){soundStart();sfx.good()}else{musicOff();rainOff()}};
+
+/* ---------- 場景 ---------- */
+const SKY=[];{let x=0,s=7;const rnd=()=>(s=(s*9301+49297)%233280)/233280;while(x<640){const w=24+rnd()*40,h=40+rnd()*90;const lit=[];for(let yy=0;yy<h-8;yy+=8)for(let xx=4;xx<w-6;xx+=7)if(rnd()<.35)lit.push([xx,yy]);SKY.push({x,w,h,lit});x+=w+4}}
+function bg(t){
+  const W=640;cx.fillStyle='#3B2F2A';cx.fillRect(0,0,W,280);
+  cx.fillStyle='#1F2C2E';cx.fillRect(20,10,600,120);
+  for(const b of SKY){cx.fillStyle='#2E4447';cx.fillRect(20+b.x*.94,130-b.h*.8,b.w*.94,b.h*.8);cx.fillStyle='#E0A458';for(const [lx,ly] of b.lit){const yy=130-b.h*.8+4+ly*.8;if(yy<128)cx.fillRect(20+b.x*.94+lx,yy,3,3)}}
+  cx.fillStyle='rgba(224,164,88,.12)';cx.fillRect(20,96,600,34);
+  cx.fillStyle='rgba(233,243,239,.28)';const o=reduce?0:(t/14)%40;for(let i=0;i<70;i++){const rx=(i*53)%600+20,ry=((i*37)%120+o*3)%120+10;cx.fillRect(rx,ry,1,6)}
+  cx.fillStyle='#2D2A26';for(let x=20;x<=620;x+=150)cx.fillRect(x-2,10,4,120);cx.fillRect(18,8,604,4);cx.fillRect(18,128,604,4);
+  cx.fillStyle='#4A3A33';cx.fillRect(0,132,W,60);
+  const lamp=cx.createRadialGradient(320,0,10,320,0,260);lamp.addColorStop(0,'rgba(242,208,164,.32)');lamp.addColorStop(1,'rgba(242,208,164,0)');cx.fillStyle=lamp;cx.fillRect(0,0,W,280);
+  cx.fillStyle='#5A473E';for(let i=0;i<5;i++){cx.fillRect(30+i*36,168,30,6);cx.fillRect(34+i*36,174,3,16);cx.fillRect(53+i*36,174,3,16)}
+  for(let i=0;i<5;i++)cx.fillRect(470+i*30,168,26,6);
+}
+function faceMood(){
+  const c=cur();if(!c)return 'normal';
+  if(react)return react;
+  if((phase==='doc'||phase==='swallow')&&level>0&&c.mood!=='sleepy')return ['impatient','angry','furious'][level-1];
+  return c.mood;
+}
+function drawScene(ts){
+  const t=ts||0;bg(t);const c=cur();
+  if(c&&['doc','swallow','done','gone'].includes(phase)){
+    cases.slice(ci+1,ci+3).forEach((n,i)=>{cx.save();cx.imageSmoothingEnabled=true;cx.globalAlpha=.85;cx.drawImage(charCanvas(LOOK[n.lk],'normal'),34+i*48,118,44,53);cx.restore();cx.fillStyle='rgba(59,47,42,.45)';cx.fillRect(34+i*48,118,44,53)});
+    const mood=faceMood();let x=240,y=36;
+    if(walkT<.55){const p=walkT/.55;x=240-200*(1-p)*(1-p)}
+    if(phase==='swallow'&&W&&cur().decoy==='cough'&&dOn()&&!reduce)x+=Math.round(Math.sin(t/30)*2);
+    if(level===3&&phase==='doc'&&!reduce){x+=Math.round(Math.sin(t/25)*2);y+=Math.round(Math.cos(t/31))}
+    if(phase!=='gone'){const im=charCanvas(LOOK[c.lk],mood);cx.imageSmoothingEnabled=false;cx.drawImage(im,x,y);
+      mc.clearRect(0,0,80,96);mc.imageSmoothingEnabled=true;mc.drawImage(im,0,0,80,96);
+      if(c.smell){cx.fillStyle='#B9A98E';for(let i=0;i<3;i++){const sx=x+146+i*7;for(let k=0;k<8;k++)cx.fillRect(sx+((k+(reduce?0:Math.floor(t/200)))%2),74+k*3-i*4,2,3)}}
+      if(mood==='sleepy'){cx.fillStyle='#FFFDF8';const zz=(a,b,s)=>{cx.fillRect(a,b,4*s,s);cx.fillRect(a+2*s,b+s,s,s);cx.fillRect(a+s,b+2*s,s,s);cx.fillRect(a,b+3*s,4*s,s)};zz(x+148,48,2);zz(x+160,34,2)}}
+    else mc.clearRect(0,0,80,96);
+  }
+  cx.fillStyle='rgba(88,139,139,.9)';cx.fillRect(128,0,10,232);cx.fillRect(502,0,10,232);cx.fillRect(128,0,384,8);
+  cx.fillStyle='rgba(255,253,248,.10)';cx.beginPath();cx.moveTo(150,8);cx.lineTo(176,8);cx.lineTo(140,120);cx.lineTo(140,80);cx.fill();cx.beginPath();cx.moveTo(470,8);cx.lineTo(480,8);cx.lineTo(440,140);cx.lineTo(436,140);cx.fill();
+  cx.fillStyle='#C8553D';cx.fillRect(0,222,640,14);cx.fillStyle='#A9432F';cx.fillRect(0,236,640,44);cx.fillStyle=OL;cx.fillRect(0,222,640,2);
+  cx.fillRect(270,222,100,8);cx.fillStyle='#FFFDF8';cx.fillRect(274,224,92,4);
+  cx.fillStyle='#8C6A5D';for(let i=0;i<8;i++)cx.fillRect(20+i*80,256,40,3);
+  if(phase==='swallow'&&c&&W)drawWatch(c,t);else drawDispenser(false);
+}
+
+/* 飲水機：放在窗口右側的櫃台上 */
+function drawDispenser(pour){
+  const X=440;cx.fillStyle=OL;cx.fillRect(X-2,130,48,92);cx.fillStyle='#E9E4DA';cx.fillRect(X,132,44,90);cx.fillStyle='#CFC6B8';cx.fillRect(X+34,132,10,90);
+  cx.fillStyle=OL;cx.fillRect(X+4,138,26,10);cx.fillStyle='#588B8B';cx.fillRect(X+5,139,24,8);cx.fillStyle='#FFFDF8';cx.fillRect(X+7,141,2,4);cx.fillRect(X+11,141,2,4);
+  cx.fillStyle=OL;cx.fillRect(X+8,158,30,8);cx.fillStyle='#5A9BB8';cx.fillRect(X+9,159,13,6);cx.fillStyle='#C8553D';cx.fillRect(X+24,159,13,6);
+  cx.fillStyle=OL;cx.fillRect(X+18,166,8,6);cx.fillStyle='#8C8577';cx.fillRect(X+19,166,6,5);
+  cx.fillStyle=OL;cx.fillRect(X+2,214,40,3);cx.fillStyle='#8C8577';cx.fillRect(X+3,212,38,2);
+  cx.fillStyle=OL;cx.fillRect(X+4,92,36,40);cx.fillStyle='rgba(159,211,230,.95)';cx.fillRect(X+6,94,32,36);cx.fillStyle='#C9E8F2';cx.fillRect(X+9,98,5,26);
+  cx.fillStyle='#7FBFD6';cx.fillRect(X+6,104+(pour?2:0),32,2);cx.fillStyle=OL;cx.fillRect(X+14,128,16,4);
+}
+/* 手搖飲：透明杯、奶茶、珍珠、紅色吸管 */
+function boba(X,Y){cx.fillStyle=OL;cx.fillRect(X+9,Y-14,5,16);cx.fillStyle='#C8553D';cx.fillRect(X+10,Y-13,3,15);
+  for(let i=0;i<30;i++){const w=Math.round(22-4*i/30),o=Math.round((22-w)/2);cx.fillStyle=OL;cx.fillRect(X+o-2,Y+i,w+4,1);cx.fillStyle=i<4?'#F2EEE6':i<9?'#EADFCF':'#C9A27A';cx.fillRect(X+o,Y+i,w,1);if(i>=22&&i<29){cx.fillStyle='#3A2B2B';for(let k=o+1;k<o+w-1;k+=4)cx.fillRect(X+k+(i%2),Y+i,2,1)}}
+  cx.fillStyle=OL;cx.fillRect(X-3,Y-3,28,4);cx.fillStyle='#FFFDF8';cx.fillRect(X-2,Y-2,26,2);cx.fillStyle='rgba(255,253,248,.55)';cx.fillRect(X+3,Y+5,2,20)}
+function drawWatch(c,t){
+  const an=c.anom,f=W.t/W.len,L=W.len,skin=(LOOK[c.lk]&&SKIN[LOOK[c.lk].skin])||'#EBC3A0';
+  const lerp=(a,b,p)=>a+(b-a)*Math.max(0,Math.min(1,p));
+  const hand=(X,Y)=>{cx.fillStyle=OL;cx.fillRect(X-2,Y-2,20,16);cx.fillStyle=skin;cx.fillRect(X,Y,16,12);cx.fillStyle=OL;cx.fillRect(X+5,Y,1,6);cx.fillRect(X+10,Y,1,6)};
+  // 紙杯：上寬下窄，杯口有捲邊，杯身一條灰青色帶
+  const cup=(X,Y,stain,water)=>{const H=32;
+    for(let i=0;i<H;i++){const w=Math.round(28-10*i/H),o=Math.round((28-w)/2);cx.fillStyle=OL;cx.fillRect(X+o-2,Y+i,w+4,1);
+      cx.fillStyle=i>=12&&i<17?'#588B8B':'#FFFDF8';cx.fillRect(X+o,Y+i,w,1);cx.fillStyle=i>=12&&i<17?'#3F6C6C':'#E6E1D6';cx.fillRect(X+o+w-5,Y+i,5,1);
+      if(water&&i>=H-Math.round(H*water)&&i<H-1&&!(i>=12&&i<17)){cx.fillStyle='rgba(120,190,220,.75)';cx.fillRect(X+o,Y+i,w,1)}
+      if(stain&&i>=H-9&&i<H-1){cx.fillStyle=i>=H-3?'#C8553D':'#E0A458';cx.fillRect(X+o,Y+i,w,1)}}
+    cx.fillStyle=OL;cx.fillRect(X-2,Y-3,32,5);cx.fillRect(X+7,Y+H,14,2);cx.fillStyle='#FFFDF8';cx.fillRect(X-1,Y-2,30,3);cx.fillStyle='#E6E1D6';cx.fillRect(X+22,Y-2,7,3)};
+  const MOUTH=[306,128],DESK=[396,190],TAP=[447,182],seg=W.seg,sp=seg>=0?(f-SEG[seg][1])/(SEG[seg][2]-SEG[seg][1]):0;
+  let cp=null,hp=null,stain=false,water=0,pour=false;
+  drawDispenser(pour);
+  const taken=an==='take'&&W.t>=W.a0;
+  if(seg<=0){const p=sp;cp=p<.3?[lerp(DESK[0],MOUTH[0],p/.3),lerp(DESK[1],MOUTH[1],p/.3)]:p<.8?MOUTH:[lerp(MOUTH[0],DESK[0],(p-.8)/.2),lerp(MOUTH[1],DESK[1],(p-.8)/.2)]}
+  else if(seg===1){cp=DESK;stain=an==='cup'&&!W.res&&W.t>=W.a0;if(an==='cup'&&W.t>=W.a0+W.dur&&!W.res)hp=[DESK[0]+2,DESK[1]+2]}
+  else if(seg===2){const p=sp;
+    if(p<.12)cp=[lerp(DESK[0],TAP[0],p/.12),lerp(DESK[1],TAP[1],p/.12)];
+    else if(p<.38){cp=TAP;water=Math.min(.7,(p-.12)/.24*.7);pour=p<.37}
+    else if(taken){const q=(W.t-W.a0)/W.dur;cp=q<1?[lerp(MOUTH[0],290,q),lerp(MOUTH[1],230,q)]:null}
+    else cp=p<.52?[lerp(TAP[0],MOUTH[0],(p-.38)/.14),lerp(TAP[1],MOUTH[1],(p-.38)/.14)]:p<.8?MOUTH:[lerp(MOUTH[0],DESK[0],(p-.8)/.2),lerp(MOUTH[1],DESK[1],(p-.8)/.2)]}
+  else cp=taken&&!W.res?null:DESK;
+  if(taken&&!W.res&&seg>2)cp=null;if(W.res&&an==='take')cp=DESK;
+  if(cp&&cp[1]<222){const X=Math.round(cp[0]),Y=Math.round(cp[1]);cup(X,Y,stain,water);if(pour){cx.fillStyle=OL;cx.fillRect(TAP[0]+11,171,7,Y-171+8);cx.fillStyle='#3E8FB5';cx.fillRect(TAP[0]+12,171,5,Y-171+8);cx.fillStyle='#BFE3F0';cx.fillRect(TAP[0]+13,172+Math.floor(t/50)%10,2,4);cx.fillStyle='#3E8FB5';cx.fillRect(TAP[0]+6,Y+1,16,2)}if(cp!==TAP)hand(X-10,Y+14)}
+  if(hp)hand(hp[0],hp[1]);
+  if(an==='tissue'&&!W.res&&W.t>=W.a0&&W.t<W.a0+W.dur){const q=(W.t-W.a0)/W.dur,X=q<.55?MOUTH[0]-2:lerp(MOUTH[0],362,(q-.55)/.45),Y=q<.55?MOUTH[1]+2:lerp(MOUTH[1],206,(q-.55)/.45);cx.fillStyle=OL;cx.fillRect(X-2,Y-2,24,18);cx.fillStyle='#FFFDF8';cx.fillRect(X,Y,20,14);cx.fillStyle='#E6E1D6';cx.fillRect(X+4,Y+5,12,2);hand(X+4,Y+10)}
+  if(an==='own'&&W.t>=W.a0&&!W.res){const q=(W.t-W.a0)/W.dur,M2=[309,160],at=q<.65?M2:q<1?[lerp(M2[0],346,(q-.65)/.35),lerp(M2[1],188,(q-.65)/.35)]:[346,188];boba(Math.round(at[0]),Math.round(at[1]));if(q<1)hand(Math.round(at[0])-6,Math.round(at[1])+16)}
+  if(c.decoy==='scratch'&&dOn())hand(286,64);
+  // 觀察窗進度
+  cx.fillStyle='rgba(45,42,38,.85)';cx.fillRect(150,240,340,30);cx.fillStyle='#588B8B';cx.fillRect(153,262,Math.round(334*Math.min(1,f)),5);
+  cx.fillStyle='#FFFDF8';cx.font='15px "DotGothic16",monospace';cx.textBaseline='top';cx.fillText(`觀察中 ${Math.max(0,Math.ceil(L-W.t))}s　${seg>=0?SEG[seg][0]:''}${W.paused?'　⏸ 已喊停':''}`,158,244);
+}
+/* ---------- 文件 ---------- */
+function row(k,label,v,cls=''){return `<div class="row f" data-k="${k}" data-v="${esc(v)}"><span class="k">${label}</span><span class="v ${cls}">${esc(v)}</span></div>`}
+function renderDocs(){
+  const c=cur(),dd=DAYS[day].date;
+  const cardName=c.cardName||c.name,cardNo=c.cardNo||c.no,sysName=c.sysName||c.name,sysNo=c.sysNoX||c.no,sysBirth=c.sysBirth||c.birth;
+  $('#docs').innerHTML=`
+  <div class="doc idc" data-i="0"><h3>身分證件<span>遊戲用・虛構</span></h3>
+    <div class="idtop"><canvas class="photo f" data-k="photo" width="80" height="96" id="ph" title="照片"></canvas>
+    <div class="rows">${row('name','姓名',c.name)}${row('birth','出生',c.birth)}<div class="row"><span class="k">證號</span><span class="v">A2••••${esc(c.no.slice(-3))}</span></div></div></div></div>
+  <div class="doc card" data-i="1"><h3>美沙冬服藥卡<span>${esc(c.site)}</span></h3>
+    ${row('name','姓名',cardName)}${row('no','個案編號',cardNo)}${row('dose','處方劑量',c.dose+' mg')}${row('valid','有效期限',c.valid)}${row('site','給藥院所',c.site)}</div>
+  <div class="doc sys" data-i="2"><h3>替代治療系統<span>${esc(dd.t)}</span></h3>
+    ${row('name','姓名',sysName)}${row('no','個案編號',sysNo)}${row('birth','出生',sysBirth)}${row('dose','今日劑量',c.dose+' mg')}${row('last','最後服藥',c.last.t)}
+    ${row('today','今日紀錄',c.today,c.today.includes('已')?'warnv':'')}${row('cross','跨區核准',c.cross,c.cross.includes('無')?'warnv':'')}</div>`;
+  const ph=$('#ph').getContext('2d');ph.fillStyle='#DCE9E6';ph.fillRect(0,0,80,96);ph.imageSmoothingEnabled=true;ph.drawImage(charCanvas(LOOK[c.photo||c.lk],'normal'),0,0,80,96);
+  setTab(tab);bindFields();
+}
+function setTab(i){tab=i;document.querySelectorAll('#docs .doc').forEach(d=>d.classList.toggle('act',+d.dataset.i===i));document.querySelectorAll('#tabs button').forEach((b,j)=>{b.classList.toggle('on',j===i);b.classList.toggle('ok',tabSt[j]===1);b.classList.toggle('bad',tabSt[j]===2);b.textContent=['證件','服藥卡','系統'][j]+(tabSt[j]===2?' ✗':tabSt[j]===1?' ✓':'')})}
+const COMPAT={name:['name'],no:['no'],birth:['birth'],dose:['dose'],photo:['face'],face:['photo'],valid:['date'],last:['date'],date:['valid','last'],site:['cross'],cross:['site']};
+function tabHint(k){document.querySelectorAll('#tabs button').forEach(b=>b.classList.remove('pulse'));if(!k||!compact())return;const want=COMPAT[k]||[];document.querySelectorAll('#docs .doc').forEach(d=>{const i=+d.dataset.i;if(i===tab)return;if(want.some(w=>d.querySelector('.f[data-k='+w+']')))document.querySelector('#tabs button[data-t="'+i+'"]').classList.add('pulse')})}
+document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>setTab(+b.dataset.t));
+function bindFields(){
+  document.querySelectorAll('.f').forEach(el=>{el.classList.remove('sel','bad','ok');el.onclick=()=>pick(el)});
+}
+cv.dataset.k='face';cv.onclick=()=>pick(cv);
+
+/* ---------- 比對（隨時點兩個欄位） ---------- */
+function logp(t,c=''){const p=document.createElement('p');p.className=c;p.textContent=t;$('#log').prepend(p)}
+function pick(el){
+  if(phase!=='doc'){if(el===cv)skipNow();return}
+  if(!sel){sel=el;el.classList.add('sel');tabHint(el.dataset.k);if(el===cv||el.id==='miniC')logp('已選「本人」，再點一個欄位（例如證件照片）。','t');return}
+  if(sel===el){el.classList.remove('sel');sel=null;tabHint(null);return}
+  const a=sel,b=el;sel=null;a.classList.remove('sel');tabHint(null);
+  const r=judge(a.dataset.k,a.dataset.v,b.dataset.k,b.dataset.v);
+  if(r===null){logp('這兩個欄位無法互相比對：試試同名欄位，或照片配本人、效期配今日。','t');return}
+  [a,b].forEach(x=>{if(x!==cv)x.classList.add(r.bad?'bad':'ok');const d=x.closest&&x.closest('#docs .doc');if(d){const i=+d.dataset.i;tabSt[i]=Math.max(tabSt[i],r.bad?2:1)}});setTab(tab);logp(r.t,r.bad?'r':'g');
+  if(r.bad){if(r.key)found.add(r.key);sfx.bad()}else sfx.good();
+  coachEvent([a.dataset.k,b.dataset.k].sort().join('+'));
+}
+function judge(k1,v1,k2,v2){
+  const c=cur(),dd=DAYS[day].date,ks=[k1,k2].sort().join('+');
+  if(k1===k2&&['name','no','birth','dose'].includes(k1))return v1===v2?{t:`一致：${v1}`}:{bad:1,key:k1==='no'?'name':k1,t:`不一致：「${v1}」≠「${v2}」`};
+  if(ks==='face+photo')return !c.photo?{t:'照片與本人相符。'}:{bad:1,key:'photo',t:'照片和窗口裡的人完全不像！'};
+  if(ks==='date+valid'){const [y,m,d]=c.valid.split('/').map(Number),vn=y>115?99:(m===11?d-30:d);return vn>=dd.n?{t:`處方有效至 ${c.valid}，今天可用。`}:{bad:1,key:'valid',t:`處方 ${c.valid} 已過期（今天 ${dd.t}）。`}}
+  if(ks==='date+last'){const miss=dd.n-c.last.n-1;return miss>=3?{bad:1,key:'last',t:`最後服藥 ${c.last.t}，已連續 ${miss} 天未服藥。`}:{t:`最後服藥 ${c.last.t}，中斷 ${Math.max(0,miss)} 天。`}}
+  if(ks==='cross+site'){if(c.site==='本院')return{t:'本院個案，不需跨區核准。'};return c.cross.includes('已核准')?{t:'他院個案，已有跨區核准。'}:{bad:1,key:'cross',t:'他院個案，但系統沒有跨區核准！'}}
+  return null;
+}
+
+/* ---------- 教學（第一位病人） ---------- */
+const COACH=[
+ {t:'先比對照片：點<b>證件上的照片</b>，再點<b>窗口裡的她</b>。',hl:['#ph','#scene','#miniC'],need:'face+photo'},
+ {t:'很好！再點<b>服藥卡的姓名</b>，然後點<b>系統的姓名</b>（手機請切換上方頁籤，會閃的頁籤就是能比對的）。',hl:['.doc.card .row[data-k=name]','.doc.sys .row[data-k=name]','#tabs [data-t="1"]'],need:'name+name'},
+ {t:'最後點<b>有效期限</b>，再點頁首的<b>「今日」</b>。系統也顯示「尚未服藥」。都沒問題，就按<b>「給藥」</b>。',hl:['.doc.card .row[data-k=valid]','#hDate','#tabs [data-t="1"]'],need:'date+valid'},
+ {t:'都確認了：按<b>「給藥」</b>蓋章。之後的病人不會再有提示，而且耐心會開始倒數。',hl:['#acts .give'],need:'act'}
+];
+function coachShow(){
+  document.querySelectorAll('.pulse').forEach(e=>e.classList.remove('pulse'));
+  const k=$('#coach');if(tut<0||tut>=COACH.length){k.classList.remove('show');return}
+  k.innerHTML=`教學 ${tut+1}/4　${COACH[tut].t}`;k.classList.add('show');
+  COACH[tut].hl.forEach(s=>document.querySelectorAll(s).forEach(e=>e.classList.add('pulse')));
+}
+function coachEvent(ev){if(tut<0)return;if(COACH[tut].need===ev){tut++;coachShow()}}
+
+/* ---------- 便條（今晚新規則） ---------- */
+function renderNotes(){
+  $('#notes').innerHTML=RULES.filter(r=>r.day===day+1).map(r=>`<div class="note"><span class="new px">NEW</span><b>${r.t}</b>：${esc(r.x)}</div>`).join('')+(day>0?'<p class="hint">之前的規則都在「規則手冊」。</p>':'');
+}
+
+/* ---------- 流程 ---------- */
+function say(who,t,mad){$('#who').textContent=who;$('#say').textContent=t;$('#bubble').classList.toggle('mad',!!mad);$('#miniT').textContent=who+'：'+t}
+function patUI(){
+  const r=Math.max(0,1-waited/limit);$('#patB').style.width=(r*100)+'%';$('#miniB').style.width=(r*100)+'%';
+  $('#pat').className='pat px l'+level;$('#patT').textContent=tut>=0?'耐心：教學中暫停':'耐心：'+['平靜','不耐煩','生氣','暴怒'][level];
+  $('#miniB').style.background=['#588B8B','#E0A458','#C8553D','#C8553D'][level];
+}
+function goalUI(){const st=dayStats[day];if(!st)return;if(quiet()){$('#hGoal').innerHTML=`目標 稽核 0・客訴 <b class="${st.cp<=1?'goalok':''}">${st.cp}</b>/1　<span style="opacity:.7">結果下班揭曉</span>`;return}const ok=st.bad===0&&st.cp<=1;$('#hGoal').innerHTML=`目標 稽核 <b class="${st.bad===0?'goalok':''}">${st.bad}</b>/0・客訴 <b class="${st.cp<=1?'goalok':''}">${st.cp}</b>/1`}
+function loadCase(){
+  const c=cur();$('#stamp').className='stamp px';tab=0;tabSt=[0,0,0];phase='doc';walkT=reduce?1:0;found=new Set();sel=null;react=null;waited=0;level=0;asked=false;
+  limit=PAT[day]*(c.mood==='drunk'?.7:c.mood==='sleepy'?1.6:1);
+  $('#hDay').textContent=day+1;$('#hDateV').textContent=DAYS[day].date.t;$('#hQ').textContent=`${ci+1}/${cases.length}`;scoreUI();$('#hCp').textContent=cp;
+  $('#log').innerHTML='';logp(`${c.name}：${c.lines}`,'t');$('#skip').classList.remove('show');
+  say(c.name+'（自稱）',c.lines);renderDocs();setActs('doc');$('#bAsk').disabled=false;
+  tut=(day===0&&ci===0&&!tutDone)?0:-1;coachShow();patUI();goalUI();
+}
+function setActs(mode){
+  const A=$('#acts');
+  if(mode==='doc')A.innerHTML=`<button class="give" data-a="give">給藥<span class="mh">（當面服用）</span><kbd>1</kbd></button><button class="hold" data-a="hold">暫緩<span class="mh">・通報醫師</span><kbd>2</kbd></button><button class="deny" data-a="deny">拒絕給藥<kbd>3</kbd></button>`;
+  else if(mode==='sw')A.innerHTML=`<button class="deny stop" data-a="stop">✋ 喊停！<span class="mh">（看到怪動作就按）</span><kbd>1</kbd></button>`;
+  else A.innerHTML=`<button class="hold" data-a="cup">杯底有藥<kbd>1</kbd></button><button class="hold" data-a="cheek">藥含在嘴裡<kbd>2</kbd></button><button class="hold" data-a="own">自帶飲料配藥<kbd>3</kbd></button><button class="deny" data-a="take">把杯子帶走<kbd>4</kbd></button><button class="ghost" data-a="none">看錯了，繼續<kbd>5</kbd></button>`;
+  A.className='acts'+(mode==='doc'?'':' '+mode);document.body.classList.toggle('swmode',mode!=='doc');
+  A.querySelectorAll('button').forEach(b=>b.onclick=()=>act(b.dataset.a));
+}
+let tt;function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>e.classList.remove('show'),2600)}
+function stamp(kind){
+  const s=$('#stamp');s.className='stamp px '+kind;s.textContent={give:'給藥',hold:'暫緩',deny:'拒絕'}[kind];void s.offsetWidth;s.classList.add('on');
+  freezeUntil=performance.now()+(reduce?0:90);sfx.stamp();
+  document.body.classList.remove('hit');void document.body.offsetWidth;document.body.classList.add('hit');setTimeout(()=>document.body.classList.remove('hit'),300);
+}
+function act(a){
+  const c=cur(),st=dayStats[day];
+  if(phase==='doc'){
+    if(!['give','hold','deny'].includes(a))return;
+    if(tut>=0&&tut<3){toast('先照教學提示完成比對，再按決定。');return}
+    if(tut>=0){tut=-1;tutDone=true;coachShow()}
+    stamp(a);
+    const ok=a===c.ans;
+    const rw=rowOf(c);rw.you=AN[a];rw.ans=AN[c.ans];rw.ok=ok;
+    if(ok){score+=10;st.ok++;const bonus=c.clue&&found.has(c.clue)?2:0;score+=bonus;rw.bonus=bonus;
+      if(a==='give')st.safe++;else st.blocked.push(c.rule);
+      if(!quiet()){setTimeout(()=>{sfx.good();toast((a==='give'?'判斷正確':'擋得好！'+(PRAISE[c.rule]||''))+(bonus?'　比對到關鍵證據 +12':'　+10'))},120);
+      if(a!=='give')logp('護理師：擋得好，'+(a==='hold'?'我來聯絡醫師。':'我請個管師協助。'),'g')}else if(a!=='give')logp('護理師：好，'+(a==='hold'?'我來聯絡醫師。':'我請個管師協助。'),'t')}
+    else{st.bad++;slips.push({day:day+1,name:c.name,you:AN[a],ans:AN[c.ans],why:c.why,rule:c.rule});if(!quiet())setTimeout(()=>{sfx.bad();toast(`稽核單：應為「${AN[c.ans]}」`)},120);else if(a!=='give')logp('護理師：好，'+(a==='hold'?'我來聯絡醫師。':'我請個管師協助。'),'t')}
+    goalUI();
+    if(a==='give'){watchStart(c);return}
+    react=a==='give'?'happy':(level>=2?'angry':(c.mood==='sleepy'||c.mood==='drunk'?c.mood:'impatient'));
+    say(c.name,a==='give'?'謝謝～明天見！':(level>=2?'哼！什麼爛規定！':'……好吧，我知道了。'),level>=2&&a!=='give');
+    next();return;
+  }
+  if(phase==='swallow')watchAct(a,c,st);
+}
+/* ---------- 觀察吞服：固定觀察窗 ---------- */
+const SEG=[['喝藥',0,.2],['杯子給你看',.2,.38],['加水再喝',.38,.58],['放下杯子',.58,.74],['開口說話',.74,1]];
+const AT={cup:.22,take:.47,tissue:.6,own:.6,cheek:.76},DT={glance:.26,cough:.44,scratch:.62,yawn:.8};
+const LEN=[8,7,6],DUR=[2.2,1.4,1],GRACE=[2,1.5,1];
+const HANDLE={own:'請他改喝窗口的水、飲料先收起來',cup:'請他加水補喝',cheek:'請他喝水、開口說話',tissue:'收回紙巾並通報',take:'收回杯子並通報'};
+const DESC={own:'喝完藥拿自己帶的手搖飲吸了一口',cup:'杯底還留著一層藥',cheek:'抿著嘴只點頭，藥還含在嘴裡',tissue:'用紙巾按嘴角後收進口袋',take:'喝完沒把杯子放回，往窗台下藏'};
+const WHY={own:'自帶飲料可能被用來把藥吐進去帶走。配藥只能用窗口提供的水。',cup:'杯底還留著藥就放行，劑量不足，也可能被帶走。要請他加水涮杯、喝乾淨。',cheek:'藥含在嘴裡沒吞，離開後可能吐出轉賣。要請他喝水、開口說話確認。',tissue:'紙巾裡可能吐了藥，要當場收回並通報。',take:'杯子不能讓病人帶走，裡面可能殘留藥物，要收回並通報。'};
+/* ---------- 服藥過程隨機對話語庫 ---------- */
+const DLG={
+  drink:['（接過藥杯，一口喝下）','（皺著眉頭把藥喝完）','（說聲謝謝，仰頭喝下去）','（吹了吹杯子，慢慢喝完）','（捏著鼻子一口氣喝掉）','（喝完咂了咂嘴）'],
+  show:['（把杯子放回窗口給你看）','（把空杯子推到窗口前）','（把杯子轉過來給你看杯底）','（把杯子輕輕放在窗台上）'],
+  water:['（到飲水機加水涮杯，再喝一口）','（接了半杯水，搖一搖喝掉）','（加水沖一沖杯子，喝下去）','（接水把杯子涮乾淨，喝完）'],
+  wipe:['（用手背擦擦嘴）','（拿紙巾擦擦嘴，丟進垃圾桶）','（清了清喉嚨）','（舔了舔嘴唇）','（把杯子放下，整理一下外套）'],
+  wipeTissue:['（拿紙巾按了按嘴角）','（拿紙巾擦了擦嘴）'],
+  // 開口說話：藥師的一句開放式問題 + 病人回答（能清楚說話＝嘴裡沒含藥）
+  talk:[['今天還好嗎？','還不錯，今天工作比較順。'],['最近睡得好嗎？','還可以，比上禮拜好多了。'],['今天怎麼過來的？','騎車啊，雨好大，褲子都濕了。'],['晚餐吃了嗎？','還沒，等一下去吃麵。'],['最近工作忙嗎？','忙啊，這禮拜都在加班。'],['藥的味道還可以嗎？','還是有點苦，不過習慣了。'],['明天也是這個時間來嗎？','對啊，差不多這個時間。'],['最近有沒有哪裡不舒服？','沒有啦，都還好。'],['家裡都好嗎？','都好，我媽叫我要按時來。'],['外面還在下雨嗎？','下很大欸，你們下班要小心。'],['這禮拜有回診嗎？','有，醫師說維持一樣的量。'],['最近心情怎麼樣？','普普通通啦，沒什麼特別的。']],
+  talkHasty:[['今天還好嗎？','好啦好啦，我趕時間。'],['最近睡得好嗎？','還行，可以走了吧？'],['晚餐吃了嗎？','等一下吃，我先走了喔。']],
+  cheek:['嗯。（點點頭）','嗯嗯。（抿著嘴點頭）','（比了個 OK 的手勢）','……（笑一笑，沒出聲）','嗯哼。（揮揮手）'],
+  bye:['謝謝～明天見！','掰掰，辛苦了。','明天見喔。','謝啦，下班小心騎車。','好，那我先走了。','辛苦了，晚安～'],
+  byeHasty:['走了走了。','明天見啦。','掰。'],
+  caught:{cup:['（加水把杯底涮乾淨，喝下）','喔，沒喝乾淨喔？（加水再喝一次）','（有點尷尬地把杯底喝完）'],
+    cheek:['（喝了一口水，吞下去）……好啦，吞了。','（咕嘟吞下）……剛剛只是還沒吞完啦。','（喝口水吞下，張開嘴給你看）啊——這樣可以了吧。'],
+    tissue:['（不情願地把紙巾交出來）……','……（從口袋掏出紙巾）喔。','（把紙巾放到窗台上，不看你）'],
+    own:['喔……好啦，飲料先收起來。（改喝一口窗口的水）','（把手搖杯放到腳邊）水就水嘛。','我只是口渴啦……好，我喝你們的水。'],
+    take:['（把杯子放回窗口）……喔。','我只是想拿去丟啦……（把杯子交回）','（嘟囔著把杯子推回來）']},
+  falseStop:['幹嘛啦？我又沒怎樣。','你在看什麼？','到底要不要讓我走？','怎樣？我做錯什麼了嗎？','你這樣盯著我很不舒服欸。','我都照做了啊！'],
+  decoy:{cough:['咳咳！……嗆到了。','咳——咳，水太冰了。'],scratch:['（抓了抓頭）','（搔搔後腦勺）'],glance:['（東張西望了一下）','（回頭看了一下門口）'],yawn:['（打了個哈欠）','（揉揉眼睛，打個哈欠）']}
+};
+const lastD={};
+function pickD(arr,key){if(arr.length<2)return arr[0];let x;do{x=arr[Math.floor(Math.random()*arr.length)]}while(key&&x===lastD[key]);if(key)lastD[key]=x;return x}
+
+let W=null,watchTaught=false;
+function watchStart(c){
+  phase='swallow';react=null;const L=LEN[day];
+  W={t:0,len:L,dur:DUR[day],grace:GRACE[day],res:false,paused:false,seg:-1,said:{},a0:c.anom?AT[c.anom]*L:0,d0:c.decoy?DT[c.decoy]*L:0};
+  setActs('sw');$('#bAsk').disabled=true;patUI();setTimeout(()=>{if(phase==='swallow')$('#stamp').className='stamp px'},650);
+  if(!watchTaught){$('#coach').innerHTML='<b>觀察吞服</b>：盯著病人喝藥、給你看杯子、加水再喝、開口。看到怪動作就按<b>「喊停！」</b>選原因；沒問題就看完，時間到自動放行。';$('#coach').classList.add('show')}
+}
+function aOn(){const c=cur();return c.anom&&W.t>=W.a0&&W.t<W.a0+W.dur}
+function aAccept(){const c=cur();if(!c.anom||W.t<W.a0)return false;if(c.anom==='take'||c.anom==='cheek'||c.anom==='own')return true;return W.t<W.a0+W.dur+W.grace}
+function dOn(){const c=cur();return c.decoy&&W.t>=W.d0&&W.t<W.d0+1.3}
+function watchTick(dt){
+  if(W.paused||W.res)return;const c=cur();W.t+=dt;const f=W.t/W.len;
+  const si=SEG.findIndex(s=>f>=s[1]&&f<s[2]);
+  if(si!==W.seg&&si>=0){W.seg=si;
+    let line;
+    if(si===0)line=pickD(DLG.drink,'drink');
+    else if(si===1)line=pickD(DLG.show,'show');
+    else if(si===2)line=pickD(DLG.water,'water');
+    else if(si===3)line=c.anom==='own'&&day===0?'（拿起自己帶的手搖飲，吸了一口）':pickD(DLG.wipe,'wipe');
+    else{const q=pickD(c.hasty?DLG.talkHasty:DLG.talk,'talk');line=`（你：${q[0]}）`+(c.anom==='cheek'?pickD(DLG.cheek,'cheek'):q[1])}
+    say(c.name,line,si===4&&c.hasty&&c.anom!=='cheek')}
+  if(c.decoy&&!W.said.d&&W.t>=W.d0){W.said.d=1;say(c.name,pickD(DLG.decoy[c.decoy]));if(c.decoy==='glance')react='nervous';if(c.decoy==='yawn')react='sleepy';if(c.decoy==='cough')sfx.tap(1)}
+  if(W.said.d===1&&W.t>=W.d0+1.3){W.said.d=2;if(react==='nervous'||react==='sleepy')react=null}
+  if(c.anom==='cheek'){react=W.t>=W.a0&&W.t<W.a0+W.dur?'puff':(react==='puff'?null:react)}
+  if(W.t>=W.len)watchEnd();
+}
+function watchAct(a,c,st){
+  if(!W||W.res)return;
+  if(a==='stop'){if(W.paused)return;W.paused=true;W.stopAt=W.t;setActs('why');sfx.tap(0);return}
+  if(!W.paused)return;
+  if(a==='none'){W.paused=false;setActs('sw');return}
+  const ok=c.anom===a&&aAccept();
+  if(ok){W.res=true;score+=5;st.swallow++;if(!quiet())sfx.good();react='nervous';
+    say(c.name,pickD(DLG.caught[a]));
+    rowOf(c).watch='caught';rowOf(c).anom=a;
+    if(!quiet()){logp(`觀察吞服：${DESC[a]} → ${HANDLE[a]}。`,'g');toast(`抓到了！${HANDLE[a]} +5`)}else logp(`喊停：${HANDLE[a]}。`,'t');
+    if(!watchTaught){watchTaught=true;$('#coach').classList.remove('show')}
+    goalUI();next();return}
+  let tip;
+  if(dOn()||(c.decoy&&Math.abs(W.t-W.d0-.6)<1.5))tip={cough:'只是嗆到咳嗽，不是破綻。',scratch:'抓頭是正常動作，不是破綻。',glance:'東張西望不代表藏藥。',yawn:'打哈欠不是破綻。'}[c.decoy];
+  else if(c.anom===a)tip=W.t<W.a0?'還沒發生，你喊得太早了。':'時機過了，要在看到的當下喊停。';
+  else if(c.anom&&aOn())tip='是有問題，但不是這個原因。';
+  else tip='病人沒有這個問題。';
+  waited=Math.min(limit,waited+limit*.15);react='impatient';say(c.name,pickD(DLG.falseStop,'fs'),c.hasty);sfx.mad(1);toast(quiet()?'病人不太高興（耐心 -15%）':tip+' 病人耐心 -15%');
+  st.false=(st.false||0)+1;const rw=rowOf(c);rw.fs=(rw.fs||0)+1;st.fs.push({name:c.name,tip});W.paused=false;setActs('sw');
+  const r=1-waited/limit;level=r<=.08?3:r<=.25?2:r<=.5?1:0;patUI();
+  if(r<=0)leave();
+}
+function watchEnd(){
+  const c=cur(),st=dayStats[day];W.res=true;
+  const rw=rowOf(c);
+  if(c.anom){st.bad++;rw.watch='missed';rw.anom=c.anom;slips.push({day:day+1,name:c.name,you:'沒喊停就放行',ans:HANDLE[c.anom],why:`第 ${Math.max(1,Math.round(W.a0))} 秒：${DESC[c.anom]}。${WHY[c.anom]}`,rule:'R8',rp:{c:clone(c),a0:W.a0,dur:W.dur,len:W.len,d0:W.d0}});if(!quiet()){sfx.bad();toast('稽核單：漏看了——'+DESC[c.anom])}react='happy';say(c.name,pickD(c.hasty?DLG.byeHasty:DLG.bye,'bye'))}
+  else{rw.watch=c.decoy?'decoy':'clean';react='happy';say(c.name,pickD(c.hasty?DLG.byeHasty:DLG.bye,'bye'));if(!quiet())toast(c.decoy?'對，那只是正常動作。安全服藥 ✓':'觀察完成，安全服藥 ✓')}
+  if(!watchTaught){watchTaught=true;$('#coach').classList.remove('show')}
+  goalUI();next();
+}
+function leave(){
+  const c=cur(),st=dayStats[day];if(phase==='swallow'&&c.anom&&W&&!W.res){st.bad++;slips.push({day:day+1,name:c.name,you:'觀察中病人氣到離開',ans:HANDLE[c.anom],why:WHY[c.anom],rule:'R8'})}
+  rowOf(c).cp=1;phase='gone';cp++;score=Math.max(0,score-5);st.cp++;sfx.slam();
+  say(c.name,LEAVE[ci%LEAVE.length],true);logp(`${c.name} 等太久氣到離開，留下客訴。`,'r');
+  slips.push({day:day+1,name:c.name,cp:1,you:'讓病人等太久，氣到離開',ans:AN[c.ans],why:c.ans==='give'?'病人今天沒有服到藥，可能出現戒斷，甚至到外面找藥。核對要確實，動作也要熟練。':'該擋下的仍要擋下，但應及早說明原因、請醫師或個管師協助，避免衝突升高。'});
+  toast('病人離開了，客訴 +1');goalUI();next();
+}
+function advance(){pendingNext=null;$('#skip').classList.remove('show');ci++;if(ci>=cases.length)endDay();else{loadCase();if(compact()&&day===0&&ci===1)notesPanel()}}
+function next(){
+  if(phase!=='gone')phase='done';$('#acts').querySelectorAll('button').forEach(b=>b.disabled=true);$('#bAsk').disabled=true;scoreUI();$('#hCp').textContent=cp;
+  $('#skip').classList.add('show');clearTimeout(pendingNext);pendingNext=setTimeout(advance,reduce?600:1500);
+}
+function skipNow(){if(pendingNext&&(phase==='done'||phase==='gone')){clearTimeout(pendingNext);advance()}}
+$('.booth').addEventListener('click',e=>{if(e.target!==cv)skipNow()});
+function tick(dt){
+  if($('#ov').classList.contains('show'))return;
+  walkT+=dt;
+  if(['doc','swallow','done','gone'].includes(phase))dayT+=dt;
+  const m=17*60+Math.floor(dayT*1.5);$('#hClock').textContent=`${String(Math.floor(m/60)%24).padStart(2,'0')}:${String(m%60).padStart(2,'0')}`;
+  if(phase==='swallow'){watchTick(dt);return}
+  if(phase!=='doc'||tut>=0)return;
+  waited+=dt;const r=1-waited/limit;const nl=r<=.08?3:r<=.25?2:r<=.5?1:0;
+  if(nl!==level){if(nl>level){const c=cur(),line=MAD[nl-1][(ci+day)%4];say(c.name,line,nl>=2);logp(`${c.name}：${line}`,nl>=2?'r':'t');sfx.mad(nl)}level=nl}
+  patUI();
+  if(r<=0)leave();
+}
+let errShown=0;function showErr(m){if(errShown++>2)return;const e=$('#err');e.style.display='block';e.textContent='程式錯誤（請截圖回報）：'+m}
+window.addEventListener('error',ev=>showErr(ev.message||'unknown'));
+function loop(ts){const dt=lastTs?Math.min(.1,(ts-lastTs)/1000):0;lastTs=ts;try{if(ts>=freezeUntil){tick(dt);drawScene(ts)}}catch(e){showErr(e.message)}requestAnimationFrame(loop)}
+
+/* ---------- 面板 ---------- */
+function show(html){$('#panel').innerHTML=html;$('#ov').classList.add('show');try{window.scrollTo(0,0)}catch(e){}const b=$('#panel').querySelector('button');if(b)b.focus({preventScroll:true})}
+function hide(){$('#ov').classList.remove('show')}
+function rulesHtml(upto,mark){return '<ol>'+RULES.filter(r=>r.day<=upto).map(r=>`<li><b>${r.t}</b>${mark&&r.day===mark?'<span class="new px">NEW</span>':''}：${esc(r.x)}</li>`).join('')+'</ol>'}
+function startDay(d){
+  day=d;ci=0;dayT=0;cases=buildDay(d);
+  snap={score,cp,slips:slips.length};
+  dayStats[day]={ok:0,bad:0,cp:0,safe:0,swallow:0,blocked:[],rows:[],fs:[]};
+  renderNotes();hide();loadCase();
+  if(d>0){if(compact())notesPanel();else toast(`第 ${d+1} 晚：新增 ${RULES.filter(r=>r.day===d+1).length} 條規則，看右側便條。${d===1?'從今晚起對錯改到下班才揭曉。':''}`)}
+}
+function replayDay(d){score=snap.score;cp=snap.cp;slips=slips.slice(0,snap.slips);startDay(d)}
+function meaningHtml(st){
+  const items=[];
+  if(st.safe)items.push(`讓 ${st.safe} 位病人安全、當面服到藥。`);
+  const cnt={};st.blocked.forEach(r=>{if(r)cnt[r]=(cnt[r]||0)+1});
+  for(const r in cnt)items.push(`${PRAISE[r]||'正確擋下'}${cnt[r]>1?`（${cnt[r]} 次）`:''}`);
+  if(st.swallow)items.push(`觀察服藥時及時喊停，攔下 ${st.swallow} 次可能的藥物流出。`);
+  return items.length?`<div class="meaning"><b>今晚你守住了</b><ul>${items.map(i=>`<li>${esc(i)}</li>`).join('')}</ul></div>`:'';
+}
+/* ---------- 漏看回放 ---------- */
+const MOUTH0=[306,128];const RING={own:[357,203,28],cup:[410,206,28],cheek:[320,140,30],tissue:[326,166,42],take:[300,196,40]};
+function playReplay(cv2,rp){
+  const g=cv2.getContext('2d'),t0=Math.max(0,rp.a0-.8),t1=rp.a0+rp.dur+.9,span=t1-t0+.8;let st0=null;
+  function frame(ts){
+    if(!cv2.isConnected)return;if(st0===null)st0=ts;
+    const tt=Math.min(t1,t0+((ts-st0)/1000)%span),c=rp.c,f=tt/rp.len;
+    const sv={cx,mc,W,phase,react,level,walkT,curO};
+    try{
+      cx=g;mc=document.createElement('canvas').getContext('2d');curO=c;phase='swallow';level=0;walkT=5;
+      W={t:tt,len:rp.len,dur:rp.dur,grace:0,res:false,paused:false,seg:SEG.findIndex(q=>f>=q[1]&&f<q[2]),a0:rp.a0,d0:rp.d0||0,said:{}};
+      react=c.anom==='cheek'&&tt>=rp.a0&&tt<rp.a0+rp.dur?'puff':null;
+      drawScene(ts);
+      const on=tt>=rp.a0&&tt<rp.a0+rp.dur+(c.anom==='take'||c.anom==='cheek'||c.anom==='own'?.9:0),r=c.anom==='own'&&tt<rp.a0+rp.dur*.65?[320,165,32]:RING[c.anom];
+      if(on&&r){g.strokeStyle='#C8553D';g.lineWidth=4;g.beginPath();g.arc(r[0],r[1],r[2]+Math.sin(ts/120)*3,0,Math.PI*2);g.stroke();g.lineWidth=2;g.strokeStyle='#FFFDF8';g.beginPath();g.arc(r[0],r[1],r[2]+5+Math.sin(ts/120)*3,0,Math.PI*2);g.stroke()}
+      g.fillStyle='rgba(200,85,61,.92)';g.fillRect(500,12,128,24);g.fillStyle='#FFFDF8';g.font='15px "DotGothic16",monospace';g.textBaseline='top';g.fillText(`▶ 回放 ${tt.toFixed(1)}s`,508,16);
+    }finally{cx=sv.cx;mc=sv.mc;W=sv.W;phase=sv.phase;react=sv.react;level=sv.level;walkT=sv.walkT;curO=sv.curO}
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+}
+function slipHtml(s,withDay){const k=slipHtml.n=(slipHtml.n||0)+1;if(s.rp)slipHtml.q.push([k,s.rp]);
+  return `<div class="slip${s.cp?' cp':''}"><b>${withDay?`第 ${s.day} 晚｜`:''}${s.cp?'客訴':'稽核單'}｜${esc(s.name)}</b>：${esc(s.you)}；應為「${esc(s.ans)}」。<br>${esc(s.why)}${s.rule?`（規則 ${s.rule}）`:''}${s.rp?`<canvas class="rp" id="rp${k}" width="640" height="280" aria-label="漏看畫面回放"></canvas>`:''}</div>`}
+slipHtml.q=[];
+function startReplays(){slipHtml.q.forEach(([k,rp])=>{const e=$('#rp'+k);if(e)playReplay(e,rp)});slipHtml.q=[]}
+function rowsHtml(st){
+  const W2={caught:'喊停 ✓',missed:'漏看 ✗',clean:'安全服藥 ✓',decoy:'沒被誘餌騙 ✓'};
+  return `<ol class="rev">${st.rows.map((r,i)=>{const bad=r.ok===false||r.watch==='missed'||r.cp;
+    return `<li style="--d:${(i*.35).toFixed(2)}s" class="${bad?'x':'o'}"><b>${esc(r.name)}</b>　你：${esc(r.you||'—')}${r.ok===false?`（應為「${esc(r.ans)}」）`:''}${r.watch?`　觀察：${W2[r.watch]}`:''}${r.fs?`　誤喊停 ${r.fs} 次`:''}${r.cp?'　氣到離開':''}<span class="mk">${bad?'✗':'✓'}</span></li>`}).join('')}</ol>`;
+}
+function endDay(){
+  phase='intro';const st=dayStats[day],my=slips.filter(s=>s.day===day+1),goal=st.bad===0&&st.cp<=1;
+  if(goal)score+=10;scoreUI();goalUI();
+  const delay=(st.rows.length*.35+.3).toFixed(2);
+  const slipH=my.length?my.map(s=>slipHtml(s)).join(''):'<p>今晚沒有收到任何稽核單或客訴，漂亮！</p>';
+  const fsH=st.fs.length?`<div class="slip cp"><b>誤喊停 ${st.fs.length} 次</b>：${st.fs.map(f=>`${esc(f.name)}——${esc(f.tip)}`).join('；')}<br><b>提醒</b>：監督服藥是為了病人安全，不是懲罰。過程要低調、有禮貌，給病人尊嚴；沒有看到破綻就不要當眾質疑。</div>`:'';
+  show(`<h2 class="px">第 ${day+1} 晚下班${quiet()?'：稽核揭曉':''}</h2>${rowsHtml(st)}
+  <div class="after" style="--d:${delay}s"><div class="stats"><span>正確<b>${st.ok}</b></span><span>稽核單<b>${st.bad}</b></span><span>客訴<b>${st.cp}</b></span><span>累計分數<b>${score}</b></span></div>
+  <p><b>今晚目標（稽核單 0、客訴 ≤ 1）：${goal?'達成！ +10':'未達成'}</b></p>${meaningHtml(st)}${slipH}${fsH}
+  <div class="btns"><button id="go">${day<2?'下一晚':'進行月底盤點'}</button><button id="re">重玩這一晚</button></div></div>`);
+  startReplays();
+  if(!reduce)st.rows.forEach((r,i)=>setTimeout(()=>{if(!$('#ov').classList.contains('show'))return;(r.ok===false||r.watch==='missed'||r.cp)?sfx.bad():sfx.stamp()},i*350+150));
+  $('#go').onclick=()=>{if(day<2)startDay(day+1);else audit()};
+  $('#re').onclick=()=>{if(goal)score-=10;replayDay(day)};
+}
+function audit(){
+  const opts=[['a','加一點水補足 1,000 mL，帳面就對了。'],['b','誤差很小，不用登記。'],['c','照實登載盤虧 4 mL，註明原因（分裝與量器殘留造成的誤差），依規定申報。'],['d','先跟下一班借 4 mL，明天再補。']];
+  show(`<h2 class="px">月底盤點</h2><p>帳面結存 1,000 mL，實際量到 996 mL。你會怎麼處理？</p>${opts.map(o=>`<button class="choice" data-o="${o[0]}">${esc(o[1])}</button>`).join('')}`);
+  document.querySelectorAll('.choice').forEach(b=>b.onclick=()=>{
+    const ok=b.dataset.o==='c';if(ok){score+=10;stamp('give')}else{slips.push({day:3,name:'月底盤點',you:b.textContent,ans:'照實登載盤虧並註明原因',why:'液劑分裝本來就有誤差，必須誠實登載並註明原因；補水、不登記或挪帳都是違規。',rule:null});sfx.bad()}
+    final(ok);
+  });
+}
+function final(auditOk){
+  const max=DAYS.reduce((s,d,i)=>s+d.cases.length*10+d.cases.filter(c=>c.clue&&c.clue!=='look'&&c.clue!=='today').length*2+[5,10,10][i]+10,0)+10;
+  const pct=Math.round(score/max*100);
+  const title=pct>=90&&cp===0?'窗口守門人':pct>=75?'可靠的窗口藥師':pct>=50?'努力中的見習藥師':'需要再跟一次班';
+  const rc={};slips.forEach(s=>{if(s.rule)rc[s.rule]=(rc[s.rule]||0)+1});
+  const top=Object.keys(rc).sort((a,b)=>rc[b]-rc[a])[0];
+  const missed=slips.filter(s=>s.rp).length,fs=dayStats.reduce((n,s)=>n+(s?s.fs.length:0),0);
+  const code=`窗口守門人｜${score}/${max}（${pct}%）｜稱號 ${title}｜客訴 ${cp}｜規則錯誤 ${Object.keys(rc).sort().map(k=>k+'×'+rc[k]).join('、')||'無'}｜漏看 ${missed}｜誤喊停 ${fs}｜盤點 ${auditOk?'對':'錯'}`;
+  const TQ={R1:'照片和本人看起來不太像時，你會怎麼開口確認，才不會讓病人覺得被冒犯？',R2:'證件、服藥卡、系統三者資料不一致時，誰負責查明？查明前你會怎麼跟病人說？',R3:'處方過期但病人說「醫師明天才在」，你會怎麼安排，讓他今天不至於斷藥？',R4:'系統顯示已服藥，病人卻堅持沒喝過，你會怎麼處理？',R5:'聞到酒味但病人否認喝酒，你會用什麼客觀依據說服他暫緩？',R6:'病人看起來很睏，可能是哪些原因？為什麼要先暫緩、通報醫師？',R7:'連續幾天沒來服藥，為什麼不能直接照原劑量給？',R8:'你漏看的那個動作，在真實窗口還可能長什麼樣子？要站在哪裡、看哪裡才不會漏？'};
+  const qs=[top&&TQ[top],'病人說「我很急，昨天別間給過了」，你會怎麼回？','監督服藥是為了安全，不是懲罰。站在窗口時，你會怎麼做，讓病人覺得被尊重？','病人越罵越兇時，你有沒有想跳過某個步驟？哪些步驟絕對不能省？','「暫緩」和「拒絕」的差別是什麼？要怎麼說明，才能降低衝突？'].filter(Boolean);
+  const tot={ok:0,safe:0,swallow:0,blocked:[]};dayStats.forEach(s=>{if(!s)return;tot.safe+=s.safe;tot.swallow+=s.swallow;tot.blocked=tot.blocked.concat(s.blocked)});
+  show(`<h2 class="px">三晚值班結束</h2><p class="big px">${score}<span style="font-size:20px"> / ${max}</span></p><div class="stats"><span>稱號<b>${title}</b></span><span>盤點題<b>${auditOk?'答對':'答錯'}</b></span><span>稽核單<b>${slips.filter(s=>!s.cp).length} 張</b></span><span>客訴<b>${cp} 件</b></span></div>
+  ${meaningHtml(tot)}
+  <div class="code"><b>課後成績碼</b>（不含個人資料，複製後貼到課程表單）<pre id="code">${esc(code)}</pre><button id="cp">複製成績碼</button></div>
+  ${slips.length?'<h3>回顧</h3>'+slips.map(s=>slipHtml(s,true)).join(''):''}
+  <h3>帶回課堂討論</h3>${top?`<p>你這次最常卡在<b>「${esc(RULES.find(r=>r.id===top).t)}」</b>：</p>`:''}<ol>${qs.map(q=>`<li>${esc(q)}</li>`).join('')}</ol>
+  <div class="btns"><button id="again">從第 1 晚重來（病人順序會變）</button><button data-d="0" class="rd">重玩第 1 晚</button><button data-d="1" class="rd">重玩第 2 晚</button><button data-d="2" class="rd">重玩第 3 晚</button></div>`);
+  startReplays();
+  $('#cp').onclick=()=>{const t=$('#code').textContent;const done=()=>toast('已複製成績碼');if(navigator.clipboard&&window.isSecureContext)navigator.clipboard.writeText(t).then(done,()=>sel2());else sel2();function sel2(){const r=document.createRange();r.selectNodeContents($('#code'));const w=getSelection();w.removeAllRanges();w.addRange(r);try{document.execCommand('copy');done()}catch(e){toast('請長按選取後複製')}}};
+  $('#again').onclick=()=>{score=0;cp=0;slips=[];dayStats=[];startDay(0)};
+  document.querySelectorAll('.rd').forEach(b=>b.onclick=()=>{score=0;cp=0;slips=[];dayStats=[];startDay(+b.dataset.d)});
+}
+function titleScreen(){
+  show(`<h2 class="px">窗口守門人：美沙冬給藥窗口的一夜</h2><canvas class="titlepic" id="tp" width="640" height="200"></canvas>
+  <p>雨夜的晚間門診，你坐在美沙冬給藥窗口：核對證件、服藥卡與系統，觀察病人，蓋下<b>給藥</b>、<b>暫緩</b>或<b>拒絕</b>。病人等太久會生氣、大罵，最後留下客訴。</p>
+  <div class="btns"><button id="go">上班打卡</button><span class="hint" style="align-self:center">第一位病人會帶你做一次。鍵盤：1／2／3 蓋章、空白鍵喊停、R 規則手冊。</span></div><p class="hint">角色、姓名、證件與病歷皆為虛構；規則天數與流程為教學示例，實際依本院作業規範。</p>`);
+  const t=$('#tp').getContext('2d');t.fillStyle='#3B2F2A';t.fillRect(0,0,640,200);
+  const lamp=t.createRadialGradient(320,0,10,320,0,300);lamp.addColorStop(0,'rgba(242,208,164,.35)');lamp.addColorStop(1,'rgba(242,208,164,0)');t.fillStyle=lamp;t.fillRect(0,0,640,200);
+  ['xiaoqing','zhihao','yating','jiaming','meiling','mingzhe','yizhen','daming'].forEach((k,i)=>{t.imageSmoothingEnabled=false;t.drawImage(charCanvas(LOOK[k],['happy','normal','normal','drunk','normal','normal','sleepy','nervous'][i]),i*78,14,96,115)});
+  t.fillStyle='#C8553D';t.fillRect(0,128,640,12);t.fillStyle='#A9432F';t.fillRect(0,140,640,60);t.fillStyle=OL;t.fillRect(0,128,640,2);
+  $('#go').onclick=()=>{soundStart();startDay(0)};
+}
+
+/* ---------- 綁定 ---------- */
+$('#bRule').onclick=()=>{show(`<h2 class="px">規則手冊</h2>${rulesHtml(day+1)}<p class="hint">天數與流程為教學示例，實際依本院作業規範。翻手冊時病人的耐心會暫停。</p><div class="btns"><button id="cl">關閉</button></div>`);$('#cl').onclick=hide};
+$('#bLog').onclick=()=>{show(`<h2 class="px">比對紀錄與對話</h2><div class="log" style="max-height:none">${$('#log').innerHTML}</div><p class="hint">看紀錄時病人的耐心會暫停。</p><div class="btns"><button id="cl">關閉</button></div>`);$('#cl').onclick=hide};
+function notesPanel(){const nr=RULES.filter(r=>r.day===day+1);show(`<h2 class="px">第 ${day+1} 晚的規則便條</h2><ol>${nr.map(r=>`<li><b>${r.t}</b>：${esc(r.x)}</li>`).join('')}</ol>${day===1?'<p class="meaning"><b>從今晚起是正式值班</b>：蓋章和喊停後不會再提示對錯，分數也先藏起來，下班稽核時一次揭曉。</p>':''}<p class="hint">隨時可以按「手冊」再看。看便條時耐心暫停。</p><div class="btns"><button id="cl">開始</button></div>`);$('#cl').onclick=hide}
+$('#bAsk').onclick=()=>{
+  if(phase!=='doc'||asked)return;const c=cur();asked=true;$('#bAsk').disabled=true;
+  if(c.hasty){waited=Math.min(limit*.97,waited+limit*.2);logp(`${c.name}：${c.ask}（看起來更不耐煩了）`,'r');say(c.name,c.ask+'……還要問什麼？快點啦！',true);sfx.mad(1)}
+  else{waited=Math.max(0,waited-limit*.12);logp(`${c.name}：${c.ask}`,'t');say(c.name,c.ask)}
+  const r=1-waited/limit;level=r<=.08?3:r<=.25?2:r<=.5?1:0;patUI();
+};
+document.addEventListener('keydown',e=>{
+  if($('#ov').classList.contains('show')){if(e.key==='Escape'&&$('#cl'))hide();return}
+  const k=e.key.toLowerCase();
+  if(k==='r')$('#bRule').click();
+  else if(k===' '&&phase==='swallow'){e.preventDefault();act('stop')}
+  else if(['1','2','3','4','5','6'].includes(k)){if(pendingNext){skipNow();return}const b=$('#acts').querySelectorAll('button')[+k-1];if(b&&!b.disabled)b.click()}
+});
+if(location.hash==='#debug')window.__setc=(k,v)=>{const c=cur();if(c)c[k]=v};if(location.hash==='#debug')window.__wg=()=>({ans:cur()?cur().ans:null,anom:cur()?cur().anom:null,decoy:cur()?cur().decoy:null,phase,tut,wt:W?W.t:0,a0:W?W.a0:0,acc:W&&cur()&&phase==='swallow'?aAccept():false});
+setActs('doc');titleScreen();requestAnimationFrame(loop);
+
+}
+
+window.__booted=true;var bd=document.getElementById('bootDiag');if(bd)bd.remove();
+</script>
+</body>
+</html>
