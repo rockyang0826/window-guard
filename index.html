@@ -232,7 +232,7 @@ header,.err,.foot{grid-column:1/-1}
   </div>
 </section>
 <p class="err" id="err"></p>
-<p class="foot">角色、姓名、證件與病歷皆為虛構。規則中的天數與流程為教學示例，實際依本院作業規範。</p>
+<p class="foot">角色、姓名、證件與病歷皆為虛構。規則中的天數與流程為教學示例，實際依各院作業規範。</p>
 </div>
 
 <div class="ov" id="ov"><div class="panel" id="panel"></div></div>
@@ -731,8 +731,8 @@ function act(a){
     if(ok){score+=10;st.ok++;const bonus=c.clue&&found.has(c.clue)?2:0;score+=bonus;rw.bonus=bonus;
       if(a==='give')st.safe++;else st.blocked.push(c.rule);
       if(!quiet()){setTimeout(()=>{sfx.good();toast((a==='give'?'判斷正確':'擋得好！'+(PRAISE[c.rule]||''))+(bonus?'　比對到關鍵證據 +12':'　+10'))},120);
-      if(a!=='give')logp('護理師：擋得好，'+(a==='hold'?'我來聯絡醫師。':'我請個管師協助。'),'g')}else if(a!=='give')logp('護理師：好，'+(a==='hold'?'我來聯絡醫師。':'我請個管師協助。'),'t')}
-    else{st.bad++;slips.push({day:day+1,name:c.name,you:AN[a],ans:AN[c.ans],why:c.why,rule:c.rule});if(!quiet())setTimeout(()=>{sfx.bad();toast(`稽核單：應為「${AN[c.ans]}」`)},120);else if(a!=='give')logp('護理師：好，'+(a==='hold'?'我來聯絡醫師。':'我請個管師協助。'),'t')}
+      if(a!=='give')logp(a==='hold'?'你：已通報醫師評估。':'你：已聯絡個管師協助查明。','g')}else if(a!=='give')logp(a==='hold'?'你：已通報醫師評估。':'你：已聯絡個管師協助查明。','t')}
+    else{st.bad++;slips.push({day:day+1,name:c.name,you:AN[a],ans:AN[c.ans],why:c.why,rule:c.rule});if(!quiet())setTimeout(()=>{sfx.bad();toast(`稽核單：應為「${AN[c.ans]}」`)},120);else if(a!=='give')logp(a==='hold'?'你：已通報醫師評估。':'你：已聯絡個管師協助查明。','t')}
     goalUI();
     if(a==='give'){watchStart(c);return}
     react=a==='give'?'happy':(level>=2?'angry':(c.mood==='sleepy'||c.mood==='drunk'?c.mood:'impatient'));
@@ -759,7 +759,7 @@ const DLG={
   talk:[['今天還好嗎？','還不錯，今天工作比較順。'],['最近睡得好嗎？','還可以，比上禮拜好多了。'],['今天怎麼過來的？','騎車啊，雨好大，褲子都濕了。'],['晚餐吃了嗎？','還沒，等一下去吃麵。'],['最近工作忙嗎？','忙啊，這禮拜都在加班。'],['藥的味道還可以嗎？','還是有點苦，不過習慣了。'],['明天也是這個時間來嗎？','對啊，差不多這個時間。'],['最近有沒有哪裡不舒服？','沒有啦，都還好。'],['家裡都好嗎？','都好，我媽叫我要按時來。'],['外面還在下雨嗎？','下很大欸，你們下班要小心。'],['這禮拜有回診嗎？','有，醫師說維持一樣的量。'],['最近心情怎麼樣？','普普通通啦，沒什麼特別的。']],
   talkHasty:[['今天還好嗎？','好啦好啦，我趕時間。'],['最近睡得好嗎？','還行，可以走了吧？'],['晚餐吃了嗎？','等一下吃，我先走了喔。']],
   cheek:['嗯。（點點頭）','嗯嗯。（抿著嘴點頭）','（比了個 OK 的手勢）','……（笑一笑，沒出聲）','嗯哼。（揮揮手）'],
-  bye:['謝謝～明天見！','掰掰，辛苦了。','明天見喔。','謝啦，下班小心騎車。','好，那我先走了。','辛苦了，晚安～'],
+  bye:['謝謝藥師～明天見！','掰掰，辛苦了。','明天見喔。','謝啦，藥師下班小心騎車。','好，那我先走了。','藥師辛苦了，晚安～'],
   byeHasty:['走了走了。','明天見啦。','掰。'],
   caught:{cup:['（加水把杯底涮乾淨，喝下）','喔，沒喝乾淨喔？（加水再喝一次）','（有點尷尬地把杯底喝完）'],
     cheek:['（喝了一口水，吞下去）……好啦，吞了。','（咕嘟吞下）……剛剛只是還沒吞完啦。','（喝口水吞下，張開嘴給你看）啊——這樣可以了吧。'],
@@ -954,9 +954,9 @@ function final(auditOk){
   document.querySelectorAll('.rd').forEach(b=>b.onclick=()=>{score=0;cp=0;slips=[];dayStats=[];startDay(+b.dataset.d)});
 }
 function titleScreen(){
-  show(`<h2 class="px">窗口守門人：美沙冬給藥窗口的一夜</h2><canvas class="titlepic" id="tp" width="640" height="200"></canvas>
-  <p>雨夜的晚間門診，你坐在美沙冬給藥窗口：核對證件、服藥卡與系統，觀察病人，蓋下<b>給藥</b>、<b>暫緩</b>或<b>拒絕</b>。病人等太久會生氣、大罵，最後留下客訴。</p>
-  <div class="btns"><button id="go">上班打卡</button><span class="hint" style="align-self:center">第一位病人會帶你做一次。鍵盤：1／2／3 蓋章、空白鍵喊停、R 規則手冊。</span></div><p class="hint">角色、姓名、證件與病歷皆為虛構；規則天數與流程為教學示例，實際依本院作業規範。</p>`);
+  show(`<h2 class="px">窗口守門人：美沙冬給藥窗口的三個夜晚</h2><canvas class="titlepic" id="tp" width="640" height="200"></canvas>
+  <p>雨夜的晚間門診，你是今晚值班的<b>藥師</b>，坐在美沙冬給藥窗口：核對證件、服藥卡與系統，觀察病人，蓋下<b>給藥</b>、<b>暫緩</b>或<b>拒絕</b>。病人等太久會生氣、大罵，最後留下客訴。</p>
+  <div class="btns"><button id="go">上班打卡</button><span class="hint" style="align-self:center">第一位病人會帶你做一次。鍵盤：1／2／3 蓋章、空白鍵喊停、R 規則手冊。</span></div><p class="hint">角色、姓名、證件與病歷皆為虛構；規則天數與流程為教學示例。各院的給藥人員（藥師或護理師）與流程不同，實際依各院作業規範。</p>`);
   const t=$('#tp').getContext('2d');t.fillStyle='#3B2F2A';t.fillRect(0,0,640,200);
   const lamp=t.createRadialGradient(320,0,10,320,0,300);lamp.addColorStop(0,'rgba(242,208,164,.35)');lamp.addColorStop(1,'rgba(242,208,164,0)');t.fillStyle=lamp;t.fillRect(0,0,640,200);
   ['xiaoqing','zhihao','yating','jiaming','meiling','mingzhe','yizhen','daming'].forEach((k,i)=>{t.imageSmoothingEnabled=false;t.drawImage(charCanvas(LOOK[k],['happy','normal','normal','drunk','normal','normal','sleepy','nervous'][i]),i*78,14,96,115)});
@@ -965,7 +965,7 @@ function titleScreen(){
 }
 
 /* ---------- 綁定 ---------- */
-$('#bRule').onclick=()=>{show(`<h2 class="px">規則手冊</h2>${rulesHtml(day+1)}<p class="hint">天數與流程為教學示例，實際依本院作業規範。翻手冊時病人的耐心會暫停。</p><div class="btns"><button id="cl">關閉</button></div>`);$('#cl').onclick=hide};
+$('#bRule').onclick=()=>{show(`<h2 class="px">規則手冊</h2>${rulesHtml(day+1)}<p class="hint">天數與流程為教學示例，實際依各院作業規範。翻手冊時病人的耐心會暫停。</p><div class="btns"><button id="cl">關閉</button></div>`);$('#cl').onclick=hide};
 $('#bLog').onclick=()=>{show(`<h2 class="px">比對紀錄與對話</h2><div class="log" style="max-height:none">${$('#log').innerHTML}</div><p class="hint">看紀錄時病人的耐心會暫停。</p><div class="btns"><button id="cl">關閉</button></div>`);$('#cl').onclick=hide};
 function notesPanel(){const nr=RULES.filter(r=>r.day===day+1);show(`<h2 class="px">第 ${day+1} 晚的規則便條</h2><ol>${nr.map(r=>`<li><b>${r.t}</b>：${esc(r.x)}</li>`).join('')}</ol>${day===1?'<p class="meaning"><b>從今晚起是正式值班</b>：蓋章和喊停後不會再提示對錯，分數也先藏起來，下班稽核時一次揭曉。</p>':''}<p class="hint">隨時可以按「手冊」再看。看便條時耐心暫停。</p><div class="btns"><button id="cl">開始</button></div>`);$('#cl').onclick=hide}
 $('#bAsk').onclick=()=>{
