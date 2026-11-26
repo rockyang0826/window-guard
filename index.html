@@ -489,7 +489,8 @@ function buildDay(d){
    const A=sh(d===0?['cup','cheek','own']:['cup','cheek','take','own']),D=sh(['cough','scratch','glance','yawn']);
    const na=[1,2,2][d],nd=[0,1,2][d];
    for(let i=0;i<na&&i<g.length;i++)g[i].anom=A[i];
-   for(let i=0;i<nd;i++){const t=g[na+i]||g[i];if(t)t.decoy=D[i]}}
+   const tg=d===2?sh(g.slice()):g.slice(na).concat(g.slice(0,na));
+   for(let i=0;i<nd;i++){const t=tg[i];if(t)t.decoy=D[i]}}
   const first=d===0&&!tutDone?list.shift():null;
   for(let i=list.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[list[i],list[j]]=[list[j],list[i]]}
   if(first)list.unshift(first);
@@ -596,7 +597,7 @@ function drawWatch(c,t){
     for(let i=0;i<H;i++){const w=Math.round(28-10*i/H),o=Math.round((28-w)/2);cx.fillStyle=OL;cx.fillRect(X+o-2,Y+i,w+4,1);
       cx.fillStyle=i>=12&&i<17?'#588B8B':'#FFFDF8';cx.fillRect(X+o,Y+i,w,1);cx.fillStyle=i>=12&&i<17?'#3F6C6C':'#E6E1D6';cx.fillRect(X+o+w-5,Y+i,5,1);
       if(water&&i>=H-Math.round(H*water)&&i<H-1&&!(i>=12&&i<17)){cx.fillStyle='rgba(120,190,220,.75)';cx.fillRect(X+o,Y+i,w,1)}
-      if(stain&&i>=H-9&&i<H-1){cx.fillStyle=i>=H-3?'#C8553D':'#E0A458';cx.fillRect(X+o,Y+i,w,1)}}
+      if(stain){const S=STAIN[day]||STAIN[0];if(i>=H-1-S[0]&&i<H-1){cx.fillStyle=i>=H-3?S[2]:S[1];cx.fillRect(X+o,Y+i,w,1)}}}
     cx.fillStyle=OL;cx.fillRect(X-2,Y-3,32,5);cx.fillRect(X+7,Y+H,14,2);cx.fillStyle='#FFFDF8';cx.fillRect(X-1,Y-2,30,3);cx.fillStyle='#E6E1D6';cx.fillRect(X+22,Y-2,7,3)};
   const MOUTH=[306,128],DESK=[396,190],TAP=[447,182],seg=W.seg,sp=seg>=0?(f-SEG[seg][1])/(SEG[seg][2]-SEG[seg][1]):0;
   let cp=null,hp=null,stain=false,water=0,pour=false;
@@ -614,7 +615,7 @@ function drawWatch(c,t){
   if(cp&&cp[1]<222){const X=Math.round(cp[0]),Y=Math.round(cp[1]);cup(X,Y,stain,water);if(pour){cx.fillStyle=OL;cx.fillRect(TAP[0]+11,171,7,Y-171+8);cx.fillStyle='#3E8FB5';cx.fillRect(TAP[0]+12,171,5,Y-171+8);cx.fillStyle='#BFE3F0';cx.fillRect(TAP[0]+13,172+Math.floor(t/50)%10,2,4);cx.fillStyle='#3E8FB5';cx.fillRect(TAP[0]+6,Y+1,16,2)}if(cp!==TAP)hand(X-10,Y+14)}
   if(hp)hand(hp[0],hp[1]);
   if(an==='tissue'&&!W.res&&W.t>=W.a0&&W.t<W.a0+W.dur){const q=(W.t-W.a0)/W.dur,X=q<.55?MOUTH[0]-2:lerp(MOUTH[0],362,(q-.55)/.45),Y=q<.55?MOUTH[1]+2:lerp(MOUTH[1],206,(q-.55)/.45);cx.fillStyle=OL;cx.fillRect(X-2,Y-2,24,18);cx.fillStyle='#FFFDF8';cx.fillRect(X,Y,20,14);cx.fillStyle='#E6E1D6';cx.fillRect(X+4,Y+5,12,2);hand(X+4,Y+10)}
-  if(an==='own'&&W.t>=W.a0&&!W.res){const q=(W.t-W.a0)/W.dur,M2=[309,160],at=q<.65?M2:q<1?[lerp(M2[0],346,(q-.65)/.35),lerp(M2[1],188,(q-.65)/.35)]:[346,188];boba(Math.round(at[0]),Math.round(at[1]));if(q<1)hand(Math.round(at[0])-6,Math.round(at[1])+16)}
+  if(an==='own'&&W.t>=W.a0&&!W.res){const q=(W.t-W.a0)/W.dur,M2=[309,160],P=OWNPOS[day]||OWNPOS[0],at=q<.65?M2:q<1?[lerp(M2[0],P[0],(q-.65)/.35),lerp(M2[1],P[1],(q-.65)/.35)]:P;if(at[1]<214){boba(Math.round(at[0]),Math.round(at[1]));if(q<1)hand(Math.round(at[0])-6,Math.round(at[1])+16)}}
   if(c.decoy==='scratch'&&dOn())hand(286,64);
   // 觀察窗進度
   cx.fillStyle='rgba(45,42,38,.85)';cx.fillRect(150,240,340,30);cx.fillStyle='#588B8B';cx.fillRect(153,262,Math.round(334*Math.min(1,f)),5);
@@ -742,9 +743,12 @@ function act(a){
   if(phase==='swallow')watchAct(a,c,st);
 }
 /* ---------- 觀察吞服：固定觀察窗 ---------- */
-const SEG=[['喝藥',0,.2],['杯子給你看',.2,.38],['加水再喝',.38,.58],['放下杯子',.58,.74],['開口說話',.74,1]];
-const AT={cup:.22,take:.47,tissue:.6,own:.6,cheek:.76},DT={glance:.26,cough:.44,scratch:.62,yawn:.8};
-const LEN=[8,7,6],DUR=[2.2,1.4,1],GRACE=[2,1.5,1];
+const SEG=[['喝藥',0,.12],['杯子給你看',.12,.34],['加水再喝',.34,.6],['放下杯子',.6,.76],['開口說話',.76,1]];
+const AT={cup:.14,take:.55,tissue:.62,own:.62,cheek:.78},DT={glance:.2,cough:.45,scratch:.64,yawn:.82};
+const LEN=[12,11,10],DUR=[3.2,2.6,2.2],GRACE=[2,1.6,1.2];
+/* 破綻細微程度：第 1 晚明顯 → 第 3 晚細微 */
+const STAIN=[[9,'#E0A458','#C8553D'],[6,'#E8BD84','#D9876F'],[3,'#EDD0A8','#E3B39A']];
+const OWNPOS=[[346,188],[258,192],[300,240]];
 const HANDLE={own:'請他改喝窗口的水、飲料先收起來',cup:'請他加水補喝',cheek:'請他喝水、開口說話',tissue:'收回紙巾並通報',take:'收回杯子並通報'};
 const DESC={own:'喝完藥拿自己帶的手搖飲吸了一口',cup:'杯底還留著一層藥',cheek:'抿著嘴只點頭，藥還含在嘴裡',tissue:'用紙巾按嘴角後收進口袋',take:'喝完沒把杯子放回，往窗台下藏'};
 const WHY={own:'自帶飲料可能被用來把藥吐進去帶走。配藥只能用窗口提供的水。',cup:'杯底還留著藥就放行，劑量不足，也可能被帶走。要請他加水涮杯、喝乾淨。',cheek:'藥含在嘴裡沒吞，離開後可能吐出轉賣。要請他喝水、開口說話確認。',tissue:'紙巾裡可能吐了藥，要當場收回並通報。',take:'杯子不能讓病人帶走，裡面可能殘留藥物，要收回並通報。'};
@@ -823,7 +827,7 @@ function watchAct(a,c,st){
 function watchEnd(){
   const c=cur(),st=dayStats[day];W.res=true;
   const rw=rowOf(c);
-  if(c.anom){st.bad++;rw.watch='missed';rw.anom=c.anom;slips.push({day:day+1,name:c.name,you:'沒喊停就放行',ans:HANDLE[c.anom],why:`第 ${Math.max(1,Math.round(W.a0))} 秒：${DESC[c.anom]}。${WHY[c.anom]}`,rule:'R8',rp:{c:clone(c),a0:W.a0,dur:W.dur,len:W.len,d0:W.d0}});if(!quiet()){sfx.bad();toast('稽核單：漏看了——'+DESC[c.anom])}react='happy';say(c.name,pickD(c.hasty?DLG.byeHasty:DLG.bye,'bye'))}
+  if(c.anom){st.bad++;rw.watch='missed';rw.anom=c.anom;slips.push({day:day+1,name:c.name,you:'沒喊停就放行',ans:HANDLE[c.anom],why:`第 ${Math.max(1,Math.round(W.a0))} 秒：${DESC[c.anom]}。${WHY[c.anom]}`,rule:'R8',rp:{c:clone(c),a0:W.a0,dur:W.dur,len:W.len,d0:W.d0,day}});if(!quiet()){sfx.bad();toast('稽核單：漏看了——'+DESC[c.anom])}react='happy';say(c.name,pickD(c.hasty?DLG.byeHasty:DLG.bye,'bye'))}
   else{rw.watch=c.decoy?'decoy':'clean';react='happy';say(c.name,pickD(c.hasty?DLG.byeHasty:DLG.bye,'bye'));if(!quiet())toast(c.decoy?'對，那只是正常動作。安全服藥 ✓':'觀察完成，安全服藥 ✓')}
   if(!watchTaught){watchTaught=true;$('#coach').classList.remove('show')}
   goalUI();next();
@@ -885,16 +889,16 @@ function playReplay(cv2,rp){
   function frame(ts){
     if(!cv2.isConnected)return;if(st0===null)st0=ts;
     const tt=Math.min(t1,t0+((ts-st0)/1000)%span),c=rp.c,f=tt/rp.len;
-    const sv={cx,mc,W,phase,react,level,walkT,curO};
+    const sv={cx,mc,W,phase,react,level,walkT,curO,day};
     try{
-      cx=g;mc=document.createElement('canvas').getContext('2d');curO=c;phase='swallow';level=0;walkT=5;
+      cx=g;mc=document.createElement('canvas').getContext('2d');curO=c;if(rp.day!=null)day=rp.day;phase='swallow';level=0;walkT=5;
       W={t:tt,len:rp.len,dur:rp.dur,grace:0,res:false,paused:false,seg:SEG.findIndex(q=>f>=q[1]&&f<q[2]),a0:rp.a0,d0:rp.d0||0,said:{}};
       react=c.anom==='cheek'&&tt>=rp.a0&&tt<rp.a0+rp.dur?'puff':null;
       drawScene(ts);
-      const on=tt>=rp.a0&&tt<rp.a0+rp.dur+(c.anom==='take'||c.anom==='cheek'||c.anom==='own'?.9:0),r=c.anom==='own'&&tt<rp.a0+rp.dur*.65?[320,165,32]:RING[c.anom];
+      const on=tt>=rp.a0&&tt<rp.a0+rp.dur+(c.anom==='take'||c.anom==='cheek'||c.anom==='own'?.9:0),r=c.anom==='own'?(tt<rp.a0+rp.dur*.65||rp.day===2?[320,165,32]:[(OWNPOS[rp.day]||OWNPOS[0])[0]+11,(OWNPOS[rp.day]||OWNPOS[0])[1]+15,28]):RING[c.anom];
       if(on&&r){g.strokeStyle='#C8553D';g.lineWidth=4;g.beginPath();g.arc(r[0],r[1],r[2]+Math.sin(ts/120)*3,0,Math.PI*2);g.stroke();g.lineWidth=2;g.strokeStyle='#FFFDF8';g.beginPath();g.arc(r[0],r[1],r[2]+5+Math.sin(ts/120)*3,0,Math.PI*2);g.stroke()}
       g.fillStyle='rgba(200,85,61,.92)';g.fillRect(500,12,128,24);g.fillStyle='#FFFDF8';g.font='15px "DotGothic16",monospace';g.textBaseline='top';g.fillText(`▶ 回放 ${tt.toFixed(1)}s`,508,16);
-    }finally{cx=sv.cx;mc=sv.mc;W=sv.W;phase=sv.phase;react=sv.react;level=sv.level;walkT=sv.walkT;curO=sv.curO}
+    }finally{cx=sv.cx;mc=sv.mc;W=sv.W;phase=sv.phase;react=sv.react;level=sv.level;walkT=sv.walkT;curO=sv.curO;day=sv.day}
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
