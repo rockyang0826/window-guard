@@ -29,10 +29,14 @@ header h1{margin:0;font-size:clamp(22px,3vw,32px);line-height:1.05;color:var(--r
 .chip.click{cursor:pointer}
 .booth{position:relative;border:4px solid var(--line);background:#3B2F2A;box-shadow:5px 5px 0 var(--line)}
 #scene{display:block;width:100%;aspect-ratio:640/280;image-rendering:pixelated;image-rendering:crisp-edges}
-.bubble{position:absolute;left:61%;top:7%;right:2.5%;background:var(--paper);border:3px solid var(--line);padding:8px 12px;font-size:clamp(14px,1.6vw,17px);box-shadow:3px 3px 0 var(--line);min-height:3.2em}
+.bubble{position:absolute;left:61%;top:7%;right:2.5%;background:var(--paper);border:3px solid var(--line);padding:8px 12px;font-size:clamp(17px,1.9vw,20px);line-height:1.45;box-shadow:3px 3px 0 var(--line);min-height:3.2em}
 .bubble::before{content:"";position:absolute;left:-14px;top:22px;border:7px solid transparent;border-right-color:var(--line)}
 .bubble.mad{background:#FCE3DC;border-color:var(--red2)}
-.bubble .who{display:block;font-size:13px;color:var(--teal2)}
+.bubble .who{display:block;font-size:14px;color:var(--teal2)}
+.me{position:absolute;left:2%;bottom:24%;max-width:34%;background:#588B8B;color:#FFFDF8;border:3px solid var(--line);padding:7px 12px;font-size:clamp(16px,1.8vw,19px);line-height:1.45;box-shadow:3px 3px 0 var(--line);opacity:0;transform:translateY(4px);transition:opacity .15s,transform .15s;pointer-events:none;z-index:3}
+.me.show{opacity:1;transform:none}
+.me .who{display:block;font-size:14px;color:#F2D0A4}
+.me::after{content:"";position:absolute;right:-14px;bottom:10px;border:7px solid transparent;border-left-color:var(--line)}
 .pat{position:absolute;left:2%;top:6%;width:min(30%,240px);background:rgba(45,42,38,.82);border:3px solid var(--paper);padding:5px 8px;color:var(--paper);font-size:13px}
 .pat .bar{height:10px;background:#5A4B43;border:2px solid var(--paper);margin-top:3px}
 .pat .bar i{display:block;height:100%;width:100%;background:var(--teal);transition:width .2s linear}
@@ -135,7 +139,7 @@ canvas.rp{display:block;width:100%;max-width:520px;margin-top:6px;border:3px sol
 .tabs button.on{background:var(--paper);border-bottom-color:var(--paper)}
 .tabs button.ok{color:var(--teal2)}.tabs button.bad{color:var(--red2)}
 #bLog{display:none}
-#acts.sw{grid-template-columns:1fr}#acts .stop{background:#C8553D!important;color:#FFFDF8!important;}#acts.sw .stop{justify-content:center;font-size:20px;min-height:56px;letter-spacing:.1em}
+#acts.sw{grid-template-columns:1fr}#acts.sw .stop{flex-direction:column;align-items:center;gap:2px;white-space:nowrap}#acts.sw .stop .mh{font-size:13px;letter-spacing:0}#acts.sw .stop kbd{display:none}#acts .stop{background:#C8553D!important;color:#FFFDF8!important;}#acts.sw .stop{justify-content:center;font-size:20px;min-height:56px;letter-spacing:.1em}
 #acts.why{grid-template-columns:repeat(2,minmax(0,1fr))}#acts.why button{justify-content:center;min-height:44px;font-size:14px}
 #acts.why .ghost{grid-column:1/-1;background:var(--paper);color:var(--ink)}
 @media (max-width:900px),(max-height:520px){
@@ -148,9 +152,10 @@ header h1{display:none}
 button.chip{min-height:26px}
 #hGoal{display:none}
 .booth{box-shadow:3px 3px 0 var(--line);border-width:3px}
-.bubble{position:static;margin:0;border-width:0;border-top:3px solid var(--line);box-shadow:none;padding:5px 10px;font-size:14px;min-height:0}
+.bubble{position:static;margin:0;border-width:0;border-top:3px solid var(--line);box-shadow:none;padding:5px 10px;font-size:17px;line-height:1.4;min-height:0}
+.me{left:1.5%;bottom:auto;max-width:40%;font-size:16px;padding:4px 9px;border-width:2px}.me .who{font-size:12px;display:inline;margin-right:4px}.me::after{display:none}
 .bubble::before{display:none}
-.bubble .who{font-size:12px;display:inline;margin-right:6px}
+.bubble .who{font-size:14px;display:inline;margin-right:6px}
 .pat{font-size:11px;width:40%;padding:3px 6px;border-width:2px;top:5%}
 .pat .bar{height:7px}
 .skip{font-size:11px}
@@ -210,6 +215,7 @@ header,.err,.foot{grid-column:1/-1}
   <canvas id="scene" width="640" height="280"></canvas>
   <div class="pat px" id="pat"><span id="patT">耐心：平靜</span><div class="bar"><i id="patB"></i></div></div>
   <div class="bubble" id="bubble" aria-live="polite"><span class="who" id="who"></span><span id="say"></span></div>
+  <div class="me" id="me" aria-live="polite"><span class="who">你（藥師）</span><span id="meT"></span></div>
   <div class="skip px" id="skip">點畫面跳過</div>
 </section>
 <div class="coach" id="coach" aria-live="polite"></div>
@@ -377,8 +383,8 @@ const D=(m,d)=>({t:`115/${String(m).padStart(2,'0')}/${String(d).padStart(2,'0')
 
 /* ---------- 規則 ---------- */
 const RULES=[
- {day:1,id:'R1',t:'照片',x:'證件照片須與窗口裡的本人相符。不符 → 拒絕給藥。'},
- {day:1,id:'R2',t:'身分',x:'證件、服藥卡、系統的姓名、個案編號、生日須一致。不符 → 拒絕給藥，請個管師協助查明。'},
+ {day:1,id:'R1',t:'照片與姓名',x:'請病人出示健保卡或身分證，照片須與窗口裡的本人相符；請病人自己說出姓名，與證件比對。不符 → 拒絕給藥。'},
+ {day:1,id:'R2',t:'資料一致',x:'健保卡、服藥卡、系統的姓名、個案編號、出生日期須一致。不符 → 拒絕給藥，請個管師協助查明。'},
  {day:1,id:'R3',t:'處方效期',x:'服藥卡處方須在有效期限內（含當日）。過期 → 暫緩，請醫師評估後開立。'},
  {day:1,id:'R4',t:'重複給藥',x:'系統顯示今日已服藥者，不得再給。→ 拒絕給藥。'},
  {day:1,id:'R8',t:'觀察吞服',x:'給藥後，在窗口前看完整個服藥過程：①當面喝完藥 → ②把杯子交回給你看 → ③到飲水機加水涮杯、再喝一口 → ④開口和你說話。看到不對勁就喊停處理；都沒問題，就讓他離開。'},
@@ -421,19 +427,19 @@ const DAYS=[
   P0({name:'林小晴',lk:'xiaoqing',birth:'85/04/02',no:'MMT-0215',valid:'115/12/31',last:D(11,30),dose:45,ans:'give',lines:'晚安～今天也麻煩你了！',ask:'昨天有來喝，今天精神不錯喔。',why:'三份文件一致、處方有效、今日未服藥，可以給藥。'}),
   P0({name:'陳志豪',lk:'zhihao',birth:'78/11/23',no:'MMT-0102',valid:'116/01/15',last:D(11,30),ans:'give',lines:'嗨，跟平常一樣。',ask:'昨天下班有過來，沒什麼不舒服。',why:'資料一致、效期內、今日未服藥。'}),
   P0({name:'王大明',lk:'daming',birth:'70/02/08',no:'MMT-0077',valid:'115/11/30',last:D(11,30),dose:80,ans:'hold',clue:'valid',rule:'R3',mood:'nervous',lines:'上次醫生說要回診……我忘了。先給我喝就好吧？',ask:'昨天有喝啊，回診的事我下禮拜去。',why:'處方 115/11/30 已過期，需醫師評估後開立新處方再給藥。'}),
-  P0({name:'張雅婷',lk:'fake',photo:'yating',birth:'79/03/14',no:'MMT-0333',valid:'115/12/20',last:D(11,30),ans:'deny',clue:'photo',rule:'R1',mood:'nervous',lines:'我是張雅婷啦，照片是以前拍的。',ask:'呃……生日喔？應該是……七月吧？',why:'證件照片與本人明顯不同（種族、髮型、髮色都不一樣），問生日也答錯，無法確認是本人。'}),
+  P0({name:'張雅婷',lk:'fake',photo:'yating',birth:'79/03/14',no:'MMT-0333',valid:'115/12/20',last:D(11,30),ans:'deny',clue:'photo',rule:'R1',mood:'nervous',lines:'我是張雅婷啦，照片是以前拍的。',askRaw:1,ask:'……張、張雅婷。（停了一下才回答，眼神飄開）',why:'健保卡照片與本人明顯不同（種族、髮型、髮色都不一樣），請他自己說姓名時也明顯遲疑，無法確認是本人。'}),
   P0({name:'黃建國',lk:'jianguo',birth:'73/09/30',no:'MMT-0140',valid:'116/02/01',last:D(12,1),today:'17:12 已服藥',ans:'deny',clue:'today',rule:'R4',lines:'我還沒喝喔，真的。',ask:'剛剛？我……我剛剛才到啦。',why:'系統顯示今天 17:12 已服藥，不得重複給藥。'}),
   P0({name:'吳美玲',lk:'meiling',cardName:'吳美芳',cardNo:'MMT-0418',birth:'82/06/11',no:'MMT-0391',valid:'115/12/25',last:D(11,30),ans:'deny',clue:'name',rule:'R2',lines:'欸？卡片怎麼了嗎？',ask:'啊……這張好像是我姊姊的卡？',why:'服藥卡姓名與個案編號屬於另一人，三方資料不一致，需拿回本人的卡並請個管師確認。'})
  ]},
  {date:D(12,2),cases:[
   P0({name:'林小晴',lk:'xiaoqing',birth:'85/04/02',no:'MMT-0215',valid:'115/12/31',last:D(12,1),dose:45,ans:'give',lines:'又見面了！外面雨好大。',ask:'昨天有來，晚上睡得很好。',why:'一切正常，可以給藥。'}),
   P0({name:'劉家銘',lk:'jiaming',birth:'80/01/19',no:'MMT-0250',valid:'116/01/05',last:D(12,1),ans:'hold',mood:'drunk',smell:true,clue:'look',rule:'R5',lines:'（一股酒味飄過來）朋友生日～喝一點點而已啦～',ask:'嘿嘿……剛剛又喝了一罐啤酒提神……',why:'有酒味且臉紅、說話含糊，酒精與美沙冬併用會加重呼吸抑制，應暫緩並通報醫師。'}),
-  P0({name:'蔡宜蓁',lk:'yizhen',birth:'86/08/08',no:'MMT-0288',valid:'115/12/28',last:D(12,1),dose:50,ans:'hold',mood:'sleepy',clue:'look',rule:'R6',lines:'……（低著頭，呼吸聲粗粗的，像在打鼾）',ask:'（你叫了兩次名字、敲敲窗口，她才慢慢抬頭）……嗯……下午……睡不著……吃了……朋友給的……安眠藥……',why:'叫名字叫不太醒、呼吸聲粗嘎像打鼾，是過量的危險徵象，加上自述併用安眠藥。應暫緩給藥、立即通報醫師。'}),
+  P0({name:'蔡宜蓁',lk:'yizhen',birth:'86/08/08',no:'MMT-0288',valid:'115/12/28',last:D(12,1),dose:50,ans:'hold',mood:'sleepy',clue:'look',rule:'R6',lines:'……（低著頭，呼吸聲粗粗的，像在打鼾）',q:'請問您叫什麼名字？……（她沒反應，你提高音量又問一次）',askRaw:1,ask:'（你敲敲窗口，她才慢慢抬頭）……蔡……宜蓁……下午……睡不著……吃了……朋友給的……安眠藥……',why:'叫名字叫不太醒、呼吸聲粗嘎像打鼾，是過量的危險徵象，加上自述併用安眠藥。應暫緩給藥、立即通報醫師。'}),
   P0({name:'鄭明哲',lk:'mingzhe',birth:'75/12/01',no:'MMT-0166',valid:'116/01/20',last:D(11,28),dose:70,ans:'hold',clue:'last',rule:'R7',lines:'前幾天回南部，沒辦法來喝。',ask:'最後一次喝是上禮拜六吧，這幾天有點流鼻水。',why:'最後服藥 115/11/28，已連續 3 天未服藥，耐受性可能下降，應請醫師重新評估劑量。'}),
-  P0({name:'何柏宇',lk:'boyu',birth:'82/09/16',no:'MMT-0344',valid:'116/01/18',last:D(12,1),dose:60,ans:'give',lines:'（瞳孔看起來小小的）晚安，今天一樣。',ask:'（叫他名字，他馬上抬頭看你）有啊，昨天有來喝。今天精神還不錯，等等要去接小孩。',why:'瞳孔小是服用鴉片類藥物常見的現象，單一徵象不代表過量。他叫得醒、對答清楚、資料一致，可以給藥。'}),
+  P0({name:'何柏宇',lk:'boyu',birth:'82/09/16',no:'MMT-0344',valid:'116/01/18',last:D(12,1),dose:60,ans:'give',lines:'（瞳孔看起來小小的）晚安，今天一樣。',askRaw:1,ask:'（馬上抬頭看你）我是何柏宇。昨天有來喝，今天精神還不錯，等等要去接小孩。',why:'瞳孔小是服用鴉片類藥物常見的現象，單一徵象不代表過量。他叫得醒、對答清楚、資料一致，可以給藥。'}),
   P0({name:'許雅雯',lk:'yawen',birth:'84/05/27',no:'MMT-0302',valid:'116/01/10',last:D(11,29),dose:40,ans:'give',lines:'這兩天加班沒來，今天一定要喝。',ask:'前天跟昨天都沒來，其他都還好。',why:'連續未服藥 2 天，未達 3 天門檻，資料一致，可以給藥（仍可提醒規律服藥）。'}),
   P0({name:'周俊宏',lk:'junhong',birth:'77/07/07',no:'MMT-0121',valid:'116/02/14',last:D(12,1),ans:'give',lines:'快點快點，我趕著去上大夜班。',ask:'昨天有喝啦，快點給我。',why:'資料一致、處方有效、今日未服藥，可以給藥；趕時間也要照流程觀察服藥。'}),
-  P0({name:'楊惠如',lk:'huiru',birth:'81/05/20',sysBirth:'81/02/05',no:'MMT-0276',valid:'115/12/30',last:D(12,1),dose:55,ans:'deny',clue:'birth',rule:'R2',lines:'這是我的證件啊，怎麼了嗎？',ask:'我生日五月二十號啊。',why:'證件生日與系統不一致，無法確認身分，先不給藥，請個管師查明資料。'})
+  P0({name:'楊惠如',lk:'huiru',birth:'81/05/20',sysBirth:'81/02/05',no:'MMT-0276',valid:'115/12/30',last:D(12,1),dose:55,ans:'deny',clue:'birth',rule:'R2',lines:'這是我的證件啊，怎麼了嗎？',ask:'證件就是我的啊，有什麼問題嗎？',why:'健保卡出生日期與系統不一致，無法確認身分，先不給藥，請個管師查明資料。'})
  ]},
  {date:D(12,3),cases:[
   P0({name:'陳秀蘭',lk:'xiulan',birth:'54/03/03',cardName:'李承恩',cardNo:'MMT-0233',sysName:'李承恩',no:'MMT-0233',valid:'116/01/31',last:D(12,2),ans:'deny',clue:'name',rule:'R9',lines:'我是承恩的媽媽，他今天加班走不開，我幫他拿回去喔。',ask:'他很乖的，你就讓我帶回去嘛。',why:'美沙冬須本人當面服用，家屬代領一律拒絕；可請個案本人前來或聯絡個管師。'}),
@@ -443,7 +449,7 @@ const DAYS=[
   P0({name:'羅志偉',lk:'zhiwei',birth:'76/04/18',no:'MMT-0188',valid:'116/02/20',last:D(12,2),ans:'give',lines:'今天一樣，謝啦。',ask:'都好都好。',why:'資料一致、處方有效、今日未服藥，可以給藥。'}),
   P0({name:'江美華',lk:'meihua',birth:'72/11/05',no:'MMT-0091',valid:'116/01/25',last:D(12,2),dose:50,ans:'hold',smell:true,clue:'look',rule:'R5',lines:'（靠近窗口時聞到酒味）沒有啦，是漱口水的味道。',ask:'晚餐……配了兩杯而已。',why:'外表看不太出來，但有明顯酒味且承認飲酒，仍應暫緩並通報醫師。'}),
   P0({name:'王大明',lk:'daming',birth:'70/02/08',no:'MMT-0077',valid:'115/11/30',last:D(11,30),dose:80,ans:'hold',clue:'valid',rule:'R3',mood:'nervous',lines:'回診還沒排到……可以先讓我帶兩天份回去嗎？',ask:'這兩天都沒喝到，好難受……醫生那邊還沒去。',why:'處方已過期，且不得攜回；應暫緩，請醫師評估開立。'}),
-  P0({name:'張雅婷',lk:'yating',birth:'79/03/14',no:'MMT-0333',valid:'115/12/20',last:D(12,2),ans:'give',lines:'聽說前天有人拿我的證件來？嚇死我了。',ask:'我生日三月十四號。證件前幾天弄丟，昨天才找回來。',why:'這次照片與本人相符、資料一致，可以給藥。'})
+  P0({name:'張雅婷',lk:'yating',birth:'79/03/14',no:'MMT-0333',valid:'115/12/20',last:D(12,2),ans:'give',lines:'聽說前天有人拿我的證件來？嚇死我了。',ask:'證件前幾天弄丟，昨天才找回來。',why:'這次照片與本人相符、資料一致，可以給藥。'})
  ]}
 ];
 const MAD=[
@@ -627,7 +633,7 @@ function renderDocs(){
   const c=cur(),dd=DAYS[day].date;
   const cardName=c.cardName||c.name,cardNo=c.cardNo||c.no,sysName=c.sysName||c.name,sysNo=c.sysNoX||c.no,sysBirth=c.sysBirth||c.birth;
   $('#docs').innerHTML=`
-  <div class="doc idc" data-i="0"><h3>身分證件<span>遊戲用・虛構</span></h3>
+  <div class="doc idc" data-i="0"><h3>健保卡<span>遊戲用・虛構</span></h3>
     <div class="idtop"><canvas class="photo f" data-k="photo" width="80" height="96" id="ph" title="照片"></canvas>
     <div class="rows">${row('name','姓名',c.name)}${row('birth','出生',c.birth)}<div class="row"><span class="k">證號</span><span class="v">A2••••${esc(c.no.slice(-3))}</span></div></div></div></div>
   <div class="doc card" data-i="1"><h3>美沙冬服藥卡<span>${esc(c.site)}</span></h3>
@@ -692,6 +698,12 @@ function renderNotes(){
 
 /* ---------- 流程 ---------- */
 function say(who,t,mad){$('#who').textContent=who;$('#say').textContent=t;$('#bubble').classList.toggle('mad',!!mad);$('#miniT').textContent=who+'：'+t}
+/* 藥師的話與病人的回答分開：先出現藥師泡泡，停一下再出現病人回答 */
+let sayTok=0;
+function meSay(t){const m=$('#me');$('#meT').textContent=t;m.style.top=compact()?(cv.offsetTop+cv.clientHeight*.27)+'px':'';m.classList.add('show')}
+function meHide(){$('#me').classList.remove('show');sayTok++}
+function qa(q,who,ans,mad,cb){meSay(q);const k=++sayTok;say(who,'……');setTimeout(()=>{if(k!==sayTok)return;say(who,ans,mad);if(cb)cb()},reduce?200:900)}
+function idAns(c){return c.ask.includes(c.name.slice(-2))||c.askRaw?c.ask:`我是${c.name}。${c.ask}`}
 function patUI(){
   const r=Math.max(0,1-waited/limit);$('#patB').style.width=(r*100)+'%';$('#miniB').style.width=(r*100)+'%';
   $('#pat').className='pat px l'+level;$('#patT').textContent=tut>=0?'耐心：教學中暫停':'耐心：'+['平靜','不耐煩','生氣','暴怒'][level];
@@ -703,7 +715,7 @@ function loadCase(){
   limit=PAT[day]*(c.mood==='drunk'?.7:c.mood==='sleepy'?1.6:1);
   $('#hDay').textContent=day+1;$('#hDateV').textContent=DAYS[day].date.t;$('#hQ').textContent=`${ci+1}/${cases.length}`;scoreUI();$('#hCp').textContent=cp;
   $('#log').innerHTML='';logp(`${c.name}：${c.lines}`,'t');$('#skip').classList.remove('show');
-  say(c.name+'（自稱）',c.lines);renderDocs();setActs('doc');$('#bAsk').disabled=false;
+  meHide();say(c.name+'（自稱）',c.lines);renderDocs();setActs('doc');$('#bAsk').disabled=false;
   tut=(day===0&&ci===0&&!tutDone)?0:-1;coachShow();patUI();goalUI();
 }
 function setActs(mode){
@@ -743,8 +755,8 @@ function act(a){
   if(phase==='swallow')watchAct(a,c,st);
 }
 /* ---------- 觀察吞服：固定觀察窗 ---------- */
-const SEG=[['喝藥',0,.12],['杯子給你看',.12,.34],['加水再喝',.34,.6],['放下杯子',.6,.76],['開口說話',.76,1]];
-const AT={cup:.14,take:.55,tissue:.62,own:.62,cheek:.78},DT={glance:.2,cough:.45,scratch:.64,yawn:.82};
+const SEG=[['喝藥',0,.12],['杯子給你看',.12,.34],['加水再喝',.34,.6],['放下杯子',.6,.74],['開口說話',.74,1]];
+const AT={cup:.14,take:.55,tissue:.62,own:.62,cheek:.76},DT={glance:.2,cough:.45,scratch:.64,yawn:.82};
 const LEN=[12,11,10],DUR=[3.2,2.6,2.2],GRACE=[2,1.6,1.2];
 /* 破綻細微程度：第 1 晚明顯 → 第 3 晚細微 */
 const STAIN=[[9,'#E0A458','#C8553D'],[6,'#E8BD84','#D9876F'],[3,'#EDD0A8','#E3B39A']];
@@ -795,8 +807,9 @@ function watchTick(dt){
     else if(si===1)line=pickD(DLG.show,'show');
     else if(si===2)line=pickD(DLG.water,'water');
     else if(si===3)line=c.anom==='own'&&day===0?'（拿起自己帶的手搖飲，吸了一口）':pickD(DLG.wipe,'wipe');
-    else{const q=pickD(c.hasty?DLG.talkHasty:DLG.talk,'talk');line=`（你：${q[0]}）`+(c.anom==='cheek'?pickD(DLG.cheek,'cheek'):q[1])}
-    say(c.name,line,si===4&&c.hasty&&c.anom!=='cheek')}
+    else{const q=pickD(c.hasty?DLG.talkHasty:DLG.talk,'talk');qa(q[0],c.name,c.anom==='cheek'?pickD(DLG.cheek,'cheek'):q[1],c.hasty&&c.anom!=='cheek');line=null}
+    if(si===0)meHide();
+    if(line)say(c.name,line)}
   if(c.decoy&&!W.said.d&&W.t>=W.d0){W.said.d=1;say(c.name,pickD(DLG.decoy[c.decoy]));if(c.decoy==='glance')react='nervous';if(c.decoy==='yawn')react='sleepy';if(c.decoy==='cough')sfx.tap(1)}
   if(W.said.d===1&&W.t>=W.d0+1.3){W.said.d=2;if(react==='nervous'||react==='sleepy')react=null}
   if(c.anom==='cheek'){react=W.t>=W.a0&&W.t<W.a0+W.dur?'puff':(react==='puff'?null:react)}
@@ -974,8 +987,9 @@ $('#bLog').onclick=()=>{show(`<h2 class="px">比對紀錄與對話</h2><div clas
 function notesPanel(){const nr=RULES.filter(r=>r.day===day+1);show(`<h2 class="px">第 ${day+1} 晚的規則便條</h2><ol>${nr.map(r=>`<li><b>${r.t}</b>：${esc(r.x)}</li>`).join('')}</ol>${day===1?'<p class="meaning"><b>從今晚起是正式值班</b>：蓋章和喊停後不會再提示對錯，分數也先藏起來，下班稽核時一次揭曉。</p>':''}<p class="hint">隨時可以按「手冊」再看。看便條時耐心暫停。</p><div class="btns"><button id="cl">開始</button></div>`);$('#cl').onclick=hide}
 $('#bAsk').onclick=()=>{
   if(phase!=='doc'||asked)return;const c=cur();asked=true;$('#bAsk').disabled=true;
-  if(c.hasty){waited=Math.min(limit*.97,waited+limit*.2);logp(`${c.name}：${c.ask}（看起來更不耐煩了）`,'r');say(c.name,c.ask+'……還要問什麼？快點啦！',true);sfx.mad(1)}
-  else{waited=Math.max(0,waited-limit*.12);logp(`${c.name}：${c.ask}`,'t');say(c.name,c.ask)}
+  const q=c.q||'請問您叫什麼名字？今天狀況怎麼樣？',ans=idAns(c);logp(`你：${q}`,'t');
+  if(c.hasty){waited=Math.min(limit*.97,waited+limit*.2);logp(`${c.name}：${ans}（看起來更不耐煩了）`,'r');qa(q,c.name,ans+'……還要問什麼？快點啦！',true);sfx.mad(1)}
+  else{waited=Math.max(0,waited-limit*.12);logp(`${c.name}：${ans}`,'t');qa(q,c.name,ans)}
   const r=1-waited/limit;level=r<=.08?3:r<=.25?2:r<=.5?1:0;patUI();
 };
 document.addEventListener('keydown',e=>{
