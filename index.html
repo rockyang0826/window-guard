@@ -251,7 +251,7 @@ header,.err,.foot{grid-column:1/-1}
 })();
 </script>
 <script>
-{
+(function(){ /* 用函式包起來：iOS 16 Safari 對「區塊內函式」的作用域處理有錯，會找不到 $ */
 const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const OL='#2D2A26';
@@ -984,7 +984,7 @@ document.addEventListener('keydown',e=>{
 if(location.hash==='#debug')window.__setc=(k,v)=>{const c=cur();if(c)c[k]=v};if(location.hash==='#debug')window.__wg=()=>({ans:cur()?cur().ans:null,anom:cur()?cur().anom:null,decoy:cur()?cur().decoy:null,phase,tut,wt:W?W.t:0,a0:W?W.a0:0,acc:W&&cur()&&phase==='swallow'?aAccept():false});
 setActs('doc');titleScreen();requestAnimationFrame(loop);
 
-}
+})();
 
 window.__booted=true;var bd=document.getElementById('bootDiag');if(bd)bd.remove();
 </script>
