@@ -207,6 +207,29 @@ header,.err,.foot{grid-column:1/-1}
 .booth{grid-column:1;grid-row:2}.coach{grid-column:1;grid-row:3}
 .desk{grid-column:2;grid-row:2/span 2;margin-top:0}
 }
+.booth .stamp{z-index:4;top:46%;background:rgba(255,253,248,.82)}
+/* 電腦版：一個畫面看完——左邊上方遊戲畫面、下方三份文件，右邊是蓋章按鈕與規則 */
+@media (min-width:901px) and (min-height:521px){
+  .wrap{max-width:1500px;display:grid;grid-template-columns:minmax(0,1fr) 300px;grid-template-areas:"head head" "booth side" "coach side" "docs side" "foot foot";column-gap:16px;row-gap:10px;align-items:start;padding-bottom:10px}
+  header{grid-area:head}
+  .booth{grid-area:booth;justify-self:center;width:100%}
+  .foot{display:none}
+  .docs .row{padding-top:0;padding-bottom:0}
+  .doc h3{margin-bottom:4px}
+  .coach{grid-area:coach;margin-top:0}
+  .desk{display:contents}
+  .dwrap{grid-area:docs}
+  .docs{padding:10px}
+  .tools{grid-area:side;align-self:stretch;max-height:calc(100vh - 96px);position:sticky;top:8px;min-height:0}
+  .tools .acts{order:-2}
+  .tools .pair{order:-1}
+  .tools .toast{order:-3}
+  .notes{overflow:auto;flex:1 1 auto;min-height:100px;padding-right:4px}
+  .tools .log{display:none}
+  #bLog{display:block}
+  .tools .hint{font-size:12px;margin:0}
+  .err,.foot{grid-area:foot;margin-top:4px}
+}
 @media(prefers-reduced-motion:reduce){.stamp.on{animation:none;opacity:.95}.hit .booth,.hit .dwrap{animation:none}.pulse{animation:none}}
 </style>
 </head>
@@ -229,6 +252,7 @@ header,.err,.foot{grid-column:1/-1}
   <canvas id="scene" width="640" height="280"></canvas>
   <div class="pat px" id="pat"><span id="patT">耐心：平靜</span><div class="bar"><i id="patB"></i></div></div>
   <div class="bubble" id="bubble" aria-live="polite"><span class="who" id="who"></span><span id="say"></span></div>
+  <div class="stamp px" id="stamp" aria-hidden="true"></div>
   <div class="cut" id="cut" aria-hidden="true"><span id="cutT"></span></div>
   <div class="me" id="me" aria-live="polite"><span class="who">你（藥師）</span><span id="meT"></span></div>
   <div class="skip px" id="skip">點畫面跳過</div>
@@ -236,7 +260,7 @@ header,.err,.foot{grid-column:1/-1}
 <div class="coach" id="coach" aria-live="polite"></div>
 
 <section class="desk">
-  <div class="dwrap"><div class="tabs px" id="tabs"><button data-t="0">證件</button><button data-t="1">服藥卡</button><button data-t="2">系統</button></div><div class="docs" id="docs"></div><div class="stamp px" id="stamp" aria-hidden="true"></div></div>
+  <div class="dwrap"><div class="tabs px" id="tabs"><button data-t="0">證件</button><button data-t="1">服藥卡</button><button data-t="2">系統</button></div><div class="docs" id="docs"></div></div>
   <div class="tools">
     <div class="notes" id="notes"></div>
     <div class="pair">
@@ -1065,6 +1089,15 @@ setActs('doc');titleScreen();requestAnimationFrame(loop);
 
 })();
 
+/* 電腦版：依視窗高度算出遊戲畫面寬度，讓畫面、文件、按鈕同時放得下 */
+function fitDesk(){const b=document.querySelector('.booth');if(!b)return;
+  if(!matchMedia('(min-width:901px) and (min-height:521px)').matches){b.style.width='';return}
+  const head=document.querySelector('header').offsetHeight,coach=document.getElementById('coach'),ch=coach.classList.contains('show')?coach.offsetHeight+10:0;
+  const docs=document.querySelector('.dwrap').offsetHeight,avail=innerHeight-head-ch-docs-72;
+  const colW=document.querySelector('.dwrap').clientWidth;b.style.width=Math.max(320,Math.min(colW,Math.round(avail*640/280)))+'px'}
+addEventListener('resize',fitDesk);
+try{new MutationObserver(fitDesk).observe(document.getElementById('coach'),{attributes:true,childList:true,subtree:true})}catch(e){}
+setTimeout(fitDesk,0);
 window.__booted=true;var bd=document.getElementById('bootDiag');if(bd)bd.remove();
 </script>
 </body>
