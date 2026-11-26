@@ -619,32 +619,45 @@ function boba(X,Y){cx.fillStyle=OL;cx.fillRect(X+9,Y-14,5,16);cx.fillStyle='#C85
 function drawWatch(c,t){
   const an=c.anom,f=W.t/W.len,L=W.len,skin=(LOOK[c.lk]&&SKIN[LOOK[c.lk].skin])||'#EBC3A0';
   const lerp=(a,b,p)=>a+(b-a)*Math.max(0,Math.min(1,p));
-  const hand=(X,Y)=>{cx.fillStyle=OL;cx.fillRect(X-2,Y-2,20,16);cx.fillStyle=skin;cx.fillRect(X,Y,16,12);cx.fillStyle=OL;cx.fillRect(X+5,Y,1,6);cx.fillRect(X+10,Y,1,6)};
-  // 紙杯：上寬下窄，杯口有捲邊，杯身一條灰青色帶
-  const cup=(X,Y,stain,water)=>{const H=32;
+  const cloth=(LOOK[c.lk]&&LOOK[c.lk].cloth)||'#8C6A5D';
+  // 手臂＋握拳：從肩膀伸出袖子，拳頭握在物品側邊，三根手指扣在杯身前面
+  const hand=(hx,hy,side)=>{const sh=side==='L'?[276,178]:[364,178],dir=side==='L'?-1:1;
+    // 手肘：落在肩膀與拳頭之間，往外、往下彎，手臂才不會像一根棍子
+    const ex=Math.round((sh[0]+hx+6)/2+dir*16),ey=Math.max(sh[1],Math.round((sh[1]+hy+6)/2))+14;
+    const limb=(w,col)=>{cx.lineCap='round';cx.lineJoin='round';cx.strokeStyle=col;cx.lineWidth=w;cx.beginPath();cx.moveTo(sh[0],sh[1]);cx.lineTo(ex,ey);cx.lineTo(hx+6,hy+7);cx.stroke()};
+    limb(14,OL);limb(10,cloth);
+    cx.fillStyle=OL;cx.fillRect(hx-2,hy-2,16,17);cx.fillStyle=skin;cx.fillRect(hx,hy,12,13);
+    const fx=side==='L'?hx+10:hx-6;cx.fillStyle=OL;for(let k=0;k<3;k++){cx.fillRect(fx-1,hy+1+k*4,9,4)}cx.fillStyle=skin;for(let k=0;k<3;k++){cx.fillRect(fx,hy+2+k*4,7,2)}};
+  // 紙杯：上寬下窄，杯口有捲邊，杯身一條灰青色帶；liq = [比例, 顏色]，以半透明畫出杯內液面
+  const cup=(X,Y,stain,liq)=>{const H=32,lv=liq?Math.round(H*liq[0]):0;
     for(let i=0;i<H;i++){const w=Math.round(28-10*i/H),o=Math.round((28-w)/2);cx.fillStyle=OL;cx.fillRect(X+o-2,Y+i,w+4,1);
-      cx.fillStyle=i>=12&&i<17?'#588B8B':'#FFFDF8';cx.fillRect(X+o,Y+i,w,1);cx.fillStyle=i>=12&&i<17?'#3F6C6C':'#E6E1D6';cx.fillRect(X+o+w-5,Y+i,5,1);
-      if(water&&i>=H-Math.round(H*water)&&i<H-1&&!(i>=12&&i<17)){cx.fillStyle='rgba(120,190,220,.75)';cx.fillRect(X+o,Y+i,w,1)}
-      if(stain){const S=STAIN[day]||STAIN[0];if(i>=H-1-S[0]&&i<H-1){cx.fillStyle=i>=H-3?S[2]:S[1];cx.fillRect(X+o,Y+i,w,1)}}}
+      const band=i>=12&&i<17;cx.fillStyle=band?'#588B8B':'#FFFDF8';cx.fillRect(X+o,Y+i,w,1);cx.fillStyle=band?'#3F6C6C':'#E6E1D6';cx.fillRect(X+o+w-5,Y+i,5,1);
+      if(lv&&i>=H-1-lv&&i<H-1&&!band){cx.fillStyle=liq[1];cx.fillRect(X+o,Y+i,w,1);if(i===H-1-lv){cx.fillStyle='rgba(255,253,248,.7)';cx.fillRect(X+o+2,Y+i,w-4,1)}}
+      if(stain&&!lv){const S=STAIN[day]||STAIN[0];if(i>=H-1-S[0]&&i<H-1){cx.fillStyle=i>=H-3?S[2]:S[1];cx.fillRect(X+o,Y+i,w,1)}}}
     cx.fillStyle=OL;cx.fillRect(X-2,Y-3,32,5);cx.fillRect(X+7,Y+H,14,2);cx.fillStyle='#FFFDF8';cx.fillRect(X-1,Y-2,30,3);cx.fillStyle='#E6E1D6';cx.fillRect(X+22,Y-2,7,3)};
   const MOUTH=[306,128],DESK=[396,190],TAP=[447,182],seg=W.seg,sp=seg>=0?(f-SEG[seg][1])/(SEG[seg][2]-SEG[seg][1]):0;
-  let cp=null,hp=null,stain=false,water=0,pour=false;
+  const MED='rgba(214,120,60,.85)',WATER='rgba(120,190,220,.8)';
+  let cp=null,stain=false,liq=null,pour=false;
   drawDispenser(pour);
-  const taken=an==='take'&&W.t>=W.a0;
-  if(seg<=0){const p=sp;cp=p<.3?[lerp(DESK[0],MOUTH[0],p/.3),lerp(DESK[1],MOUTH[1],p/.3)]:p<.8?MOUTH:[lerp(MOUTH[0],DESK[0],(p-.8)/.2),lerp(MOUTH[1],DESK[1],(p-.8)/.2)]}
-  else if(seg===1){cp=DESK;stain=an==='cup'&&!W.res&&W.t>=W.a0;if(an==='cup'&&W.t>=W.a0+W.dur&&!W.res)hp=[DESK[0]+2,DESK[1]+2]}
+  const taken=an==='take'&&W.t>=W.a0,resid=an==='cup'&&!W.res;
+  // 杯內狀態一路連續：藥 → 喝完（可能殘留）→ 接水 → 喝完 → 空杯
+  if(seg<=0){const p=sp;cp=p<.3?[lerp(DESK[0],MOUTH[0],p/.3),lerp(DESK[1],MOUTH[1],p/.3)]:p<.8?MOUTH:[lerp(MOUTH[0],DESK[0],(p-.8)/.2),lerp(MOUTH[1],DESK[1],(p-.8)/.2)];
+    const lv=p<.35?.45:p<.75?.45*(1-(p-.35)/.4):0;liq=lv>0?[lv,MED]:null;stain=resid&&lv<=0}
+  else if(seg===1){cp=DESK;stain=resid}
   else if(seg===2){const p=sp;
-    if(p<.12)cp=[lerp(DESK[0],TAP[0],p/.12),lerp(DESK[1],TAP[1],p/.12)];
-    else if(p<.38){cp=TAP;water=Math.min(.7,(p-.12)/.24*.7);pour=p<.37}
+    if(p<.12){cp=[lerp(DESK[0],TAP[0],p/.12),lerp(DESK[1],TAP[1],p/.12)];stain=resid}
+    else if(p<.38){cp=TAP;const lv=Math.min(.6,(p-.12)/.24*.6);liq=lv>.02?[lv,WATER]:null;stain=resid&&lv<.2;pour=p<.37}
     else if(taken){const q=(W.t-W.a0)/W.dur;cp=q<1?[lerp(MOUTH[0],290,q),lerp(MOUTH[1],230,q)]:null}
-    else cp=p<.52?[lerp(TAP[0],MOUTH[0],(p-.38)/.14),lerp(TAP[1],MOUTH[1],(p-.38)/.14)]:p<.8?MOUTH:[lerp(MOUTH[0],DESK[0],(p-.8)/.2),lerp(MOUTH[1],DESK[1],(p-.8)/.2)]}
+    else{cp=p<.52?[lerp(TAP[0],MOUTH[0],(p-.38)/.14),lerp(TAP[1],MOUTH[1],(p-.38)/.14)]:p<.8?MOUTH:[lerp(MOUTH[0],DESK[0],(p-.8)/.2),lerp(MOUTH[1],DESK[1],(p-.8)/.2)];
+      const lv=p<.56?.6:p<.78?.6*(1-(p-.56)/.22):0;liq=lv>0?[lv,WATER]:null}}
   else cp=taken&&!W.res?null:DESK;
   if(taken&&!W.res&&seg>2)cp=null;if(W.res&&an==='take')cp=DESK;
-  if(cp&&cp[1]<222){const X=Math.round(cp[0]),Y=Math.round(cp[1]);cup(X,Y,stain,water);if(pour){cx.fillStyle=OL;cx.fillRect(TAP[0]+11,171,7,Y-171+8);cx.fillStyle='#3E8FB5';cx.fillRect(TAP[0]+12,171,5,Y-171+8);cx.fillStyle='#BFE3F0';cx.fillRect(TAP[0]+13,172+Math.floor(t/50)%10,2,4);cx.fillStyle='#3E8FB5';cx.fillRect(TAP[0]+6,Y+1,16,2)}if(cp!==TAP)hand(X-10,Y+14)}
-  if(hp)hand(hp[0],hp[1]);
-  if(an==='tissue'&&!W.res&&W.t>=W.a0&&W.t<W.a0+W.dur){const q=(W.t-W.a0)/W.dur,X=q<.55?MOUTH[0]-2:lerp(MOUTH[0],362,(q-.55)/.45),Y=q<.55?MOUTH[1]+2:lerp(MOUTH[1],206,(q-.55)/.45);cx.fillStyle=OL;cx.fillRect(X-2,Y-2,24,18);cx.fillStyle='#FFFDF8';cx.fillRect(X,Y,20,14);cx.fillStyle='#E6E1D6';cx.fillRect(X+4,Y+5,12,2);hand(X+4,Y+10)}
-  if(an==='own'&&W.t>=W.a0&&!W.res){const q=(W.t-W.a0)/W.dur,M2=[309,160],P=OWNPOS[day]||OWNPOS[0],at=q<.65?M2:q<1?[lerp(M2[0],P[0],(q-.65)/.35),lerp(M2[1],P[1],(q-.65)/.35)]:P;if(at[1]<214){boba(Math.round(at[0]),Math.round(at[1]));if(q<1)hand(Math.round(at[0])-6,Math.round(at[1])+16)}}
-  if(c.decoy==='scratch'&&dOn())hand(286,64);
+  if(cp&&cp[1]<222){const X=Math.round(cp[0]),Y=Math.round(cp[1]);cup(X,Y,stain,liq);
+    if(pour){cx.fillStyle=OL;cx.fillRect(TAP[0]+11,171,7,Y-171+8);cx.fillStyle='#3E8FB5';cx.fillRect(TAP[0]+12,171,5,Y-171+8);cx.fillStyle='#BFE3F0';cx.fillRect(TAP[0]+13,172+Math.floor(t/50)%10,2,4)}
+    // 杯子放在櫃台或接水時手放開；拿起來移動、喝的時候才握著
+    const rest=(cp===DESK||cp===TAP);if(!rest)hand(X+22,Y+9,'R')}
+  if(an==='own'&&W.t>=W.a0&&!W.res){const q=(W.t-W.a0)/W.dur,M2=[309,160],P=OWNPOS[day]||OWNPOS[0],at=q<.65?M2:q<1?[lerp(M2[0],P[0],(q-.65)/.35),lerp(M2[1],P[1],(q-.65)/.35)]:P;if(at[1]<214){const X=Math.round(at[0]),Y=Math.round(at[1]);boba(X,Y);if(q<1)hand(X-12,Y+10,'L')}}
+  if(c.decoy==='scratch'&&dOn())hand(282,58,'L');
   // 觀察窗進度
   cx.fillStyle='rgba(45,42,38,.85)';cx.fillRect(150,240,340,30);cx.fillStyle='#588B8B';cx.fillRect(153,262,Math.round(334*Math.min(1,f)),5);
   cx.fillStyle='#FFFDF8';cx.font='15px "DotGothic16",monospace';cx.textBaseline='top';cx.fillText(`觀察中 ${Math.max(0,Math.ceil(L-W.t))}s　${seg>=0?SEG[seg][0]:''}${W.paused?'　⏸ 已喊停':''}`,158,244);
